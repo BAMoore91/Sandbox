@@ -1,0 +1,9 @@
+node_modules/
+client/node_modules/
+client/dist/
+.wrangler/
+dist/
+*.local
+.env
+.dev.vars
+*.log

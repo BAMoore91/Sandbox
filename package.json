@@ -1,0 +1,22 @@
+{
+  "name": "doorman-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "build:client": "cd client && npm run build",
+    "db:migrate": "wrangler d1 migrations apply doorman-db",
+    "db:migrate:local": "wrangler d1 migrations apply doorman-db --local",
+    "db:seed:local": "wrangler d1 execute doorman-db --local --file=src/db/seed.sql",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "hono": "^4.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240725.0",
+    "wrangler": "^3.65.0",
+    "typescript": "^5.5.0"
+  }
+}
