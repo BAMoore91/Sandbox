@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { cameras } from "../db/schema.js";
 import type { Go2rtcService } from "../streaming/go2rtc.js";
+import type { RecordingManager } from "../recording/manager.js";
 import { probeStream } from "../cameras/probe.js";
 import { discoverOnvifDevices } from "../cameras/discovery.js";
 import { streamName, subStreamName } from "../streaming/go2rtc.js";
@@ -31,12 +32,20 @@ const ProbeBody = z.object({
 interface Opts {
   db: Db;
   go2rtc: Go2rtcService;
+  recordingManager: RecordingManager;
 }
 
 export const cameraRoutes: FastifyPluginAsync<Opts> = async (
   app,
-  { db, go2rtc },
+  { db, go2rtc, recordingManager },
 ) => {
+  // After a camera-list-changing mutation: reconfigure go2rtc, then make
+  // the recording manager pick up the change. Wait a tick so go2rtc has
+  // re-bound its RTSP listener before a fresh recorder dials it.
+  async function reloadStack() {
+    await go2rtc.reload();
+    setTimeout(() => void recordingManager.sync(), 2000);
+  }
   app.get("/", { preHandler: app.requireAuth }, async () => {
     const rows = db.select().from(cameras).all();
     return {
@@ -78,7 +87,7 @@ export const cameraRoutes: FastifyPluginAsync<Opts> = async (
           updatedAt: now,
         })
         .run();
-      await go2rtc.reload();
+      await reloadStack();
       const created = db.select().from(cameras).where(eq(cameras.id, id)).get();
       return reply
         .code(201)
@@ -121,7 +130,7 @@ export const cameraRoutes: FastifyPluginAsync<Opts> = async (
         next.retentionDays = body.retentionDays ?? null;
 
       db.update(cameras).set(next).where(eq(cameras.id, req.params.id)).run();
-      await go2rtc.reload();
+      await reloadStack();
       const updated = db
         .select()
         .from(cameras)
@@ -137,7 +146,7 @@ export const cameraRoutes: FastifyPluginAsync<Opts> = async (
     async (req, reply) => {
       const r = db.delete(cameras).where(eq(cameras.id, req.params.id)).run();
       if (r.changes === 0) return reply.code(404).send({ error: "not_found" });
-      await go2rtc.reload();
+      await reloadStack();
       return { ok: true };
     },
   );

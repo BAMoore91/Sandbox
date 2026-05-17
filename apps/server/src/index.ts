@@ -14,7 +14,10 @@ import { authRoutes } from "./api/auth.js";
 import { userRoutes } from "./api/users.js";
 import { cameraRoutes } from "./api/cameras.js";
 import { streamRoutes } from "./api/streams.js";
+import { recordingRoutes } from "./api/recordings.js";
 import { Go2rtcService } from "./streaming/go2rtc.js";
+import { RecordingManager } from "./recording/manager.js";
+import { RetentionService } from "./storage/retention.js";
 
 import "./auth/types.js";
 
@@ -48,6 +51,34 @@ async function main() {
       "go2rtc binary not found in vendor/; run `pnpm fetch-vendor` to enable live streaming.",
     );
   }
+
+  const recordingManager = new RecordingManager(
+    db,
+    logger.child({ mod: "recordings" }),
+    go2rtc,
+  );
+  if (vendor.ffmpeg) {
+    // Give go2rtc a moment to bind its RTSP listener before pulling from it
+    setTimeout(() => {
+      void recordingManager.start();
+    }, 3000);
+  } else {
+    logger.warn(
+      "ffmpeg binary not found in vendor/; recording disabled. Run `pnpm fetch-vendor`.",
+    );
+  }
+
+  const retention = new RetentionService(
+    db,
+    logger.child({ mod: "retention" }),
+    {
+      defaultDays: 14,
+      maxDiskBytes: process.env.SOFTBISCUIT_MAX_DISK_BYTES
+        ? Number(process.env.SOFTBISCUIT_MAX_DISK_BYTES)
+        : undefined,
+    },
+  );
+  retention.start();
 
   const app = Fastify({ loggerInstance: logger });
 
@@ -89,7 +120,13 @@ async function main() {
     async (api) => {
       await api.register(authRoutes, { db, prefix: "/auth" });
       await api.register(userRoutes, { db, prefix: "/users" });
-      await api.register(cameraRoutes, { db, go2rtc, prefix: "/cameras" });
+      await api.register(cameraRoutes, {
+        db,
+        go2rtc,
+        recordingManager,
+        prefix: "/cameras",
+      });
+      await api.register(recordingRoutes, { db, jwtSecret: config.jwtSecret });
     },
     { prefix: "/api" },
   );
@@ -109,6 +146,12 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "shutting down");
+    retention.stop();
+    try {
+      await recordingManager.stop();
+    } catch (err) {
+      logger.warn({ err }, "recordingManager stop failed");
+    }
     try {
       await go2rtc.stop();
     } catch (err) {

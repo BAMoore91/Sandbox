@@ -15,7 +15,7 @@ Early development. See [the plan](/.) for the phased roadmap.
 | 0 | Foundation: monorepo, auth, DB, React shell | Done |
 | 1 | Camera ingest (ONVIF/RTSP via go2rtc) | Done |
 | 2 | Live multi-camera WebRTC viewer | Done |
-| 3 | Recording, retention, timeline | Pending |
+| 3 | Recording, retention, timeline | Done |
 | 4 | AI detection on Coral TPU | Pending |
 | 5 | Packaging: .deb/.rpm + MSI | Pending |
 
