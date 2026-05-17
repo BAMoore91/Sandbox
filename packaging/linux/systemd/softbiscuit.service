@@ -1,0 +1,24 @@
+[Unit]
+Description=SoftBiscuit NVR
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=softbiscuit
+Group=softbiscuit
+Environment=NODE_ENV=production
+Environment=SOFTBISCUIT_DATA_DIR=/var/lib/softbiscuit
+ExecStart=/usr/lib/softbiscuit/node /usr/lib/softbiscuit/server/index.js
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/softbiscuit /var/log/softbiscuit
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,22 +1,23 @@
 {
-  "name": "doorman-app",
-  "version": "1.0.0",
+  "name": "softbiscuit",
+  "version": "0.0.1",
   "private": true,
-  "scripts": {
-    "dev": "wrangler dev --local",
-    "deploy": "wrangler deploy",
-    "build:client": "cd client && npm run build",
-    "db:migrate": "wrangler d1 migrations apply doorman-db",
-    "db:migrate:local": "wrangler d1 migrations apply doorman-db --local",
-    "db:seed:local": "wrangler d1 execute doorman-db --local --file=src/db/seed.sql",
-    "types": "wrangler types"
+  "description": "Cross-platform self-hosted NVR with camera-agnostic ingest and on-device AI",
+  "license": "MIT",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0"
   },
-  "dependencies": {
-    "hono": "^4.4.0"
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "fetch-vendor": "tsx scripts/fetch-vendor.ts"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240725.0",
-    "wrangler": "^3.65.0",
-    "typescript": "^5.5.0"
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
   }
 }

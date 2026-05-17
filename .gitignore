@@ -1,9 +1,45 @@
 node_modules/
-client/node_modules/
-client/dist/
-.wrangler/
 dist/
-*.local
+build/
+.turbo/
+.cache/
+
+# Local data — never committed
+data/
+recordings/
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Bundled native binaries (fetched by scripts/fetch-vendor.ts)
+vendor/go2rtc/linux/
+vendor/go2rtc/windows/
+vendor/ffmpeg/linux/
+vendor/ffmpeg/windows/
+
+# Python sidecar
+workers/ai-coral/.venv/
+workers/ai-coral/__pycache__/
+workers/ai-coral/**/*.pyc
+
+# Env / secrets
 .env
-.dev.vars
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
 *.log
+logs/
+
+# Build artifacts
+*.deb
+*.rpm
+*.msi
+*.exe
+!vendor/**/*.exe
