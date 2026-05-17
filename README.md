@@ -12,8 +12,8 @@ Early development. See [the plan](/.) for the phased roadmap.
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Foundation: monorepo, auth, DB, React shell | In progress |
-| 1 | Camera ingest (ONVIF/RTSP via go2rtc) | Pending |
+| 0 | Foundation: monorepo, auth, DB, React shell | Done |
+| 1 | Camera ingest (ONVIF/RTSP via go2rtc) | Done |
 | 2 | Live multi-camera WebRTC viewer | Pending |
 | 3 | Recording, retention, timeline | Pending |
 | 4 | AI detection on Coral TPU | Pending |
@@ -50,10 +50,22 @@ scripts/              Build, vendor fetch, dev helpers
 # Requires Node 20+ and pnpm 9+
 pnpm install
 pnpm fetch-vendor          # downloads go2rtc + ffmpeg for your OS
-pnpm dev                   # starts server + web concurrently
+pnpm --filter @softbiscuit/server db:migrate
+pnpm dev                   # starts server (:8088) + web (:5173) concurrently
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173. First load shows a bootstrap form to create
+the admin account; subsequent loads show the login page.
+
+go2rtc's own admin UI is on http://localhost:1984 — handy for verifying
+that a camera you added is reachable end-to-end.
+
+### Vendor binaries
+
+`pnpm fetch-vendor` downloads `go2rtc` and a static `ffmpeg`+`ffprobe`
+build into `vendor/` for the host OS. To prepare release artifacts for
+the other OS, run `pnpm fetch-vendor -- --target=windows` (or `linux`,
+or `all`).
 
 ## License
 

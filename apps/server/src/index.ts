@@ -6,10 +6,13 @@ import { ZodError } from "zod";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
 import { ensureDataDirs } from "./platform/paths.js";
+import { vendorStatus } from "./platform/vendor.js";
 import { openDb, runMigrations } from "./db/client.js";
 import authPlugin from "./auth/plugin.js";
 import { authRoutes } from "./api/auth.js";
 import { userRoutes } from "./api/users.js";
+import { cameraRoutes } from "./api/cameras.js";
+import { Go2rtcService } from "./streaming/go2rtc.js";
 
 import "./auth/types.js";
 
@@ -25,6 +28,22 @@ async function main() {
     logger.warn(
       { err },
       "Migrations folder not found or failed; run `pnpm db:generate` then `pnpm db:migrate`.",
+    );
+  }
+
+  const vendor = vendorStatus();
+  logger.info({ vendor }, "vendor binaries");
+
+  const go2rtc = new Go2rtcService(db, logger.child({ mod: "go2rtc" }));
+  if (vendor.go2rtc) {
+    try {
+      await go2rtc.start();
+    } catch (err) {
+      logger.error({ err }, "go2rtc failed to start; camera streaming disabled");
+    }
+  } else {
+    logger.warn(
+      "go2rtc binary not found in vendor/; run `pnpm fetch-vendor` to enable live streaming.",
     );
   }
 
@@ -55,12 +74,22 @@ async function main() {
     status: "ok",
     version: "0.0.1",
     time: new Date().toISOString(),
+    go2rtc: {
+      configured: !!vendor.go2rtc,
+      running: go2rtc.isRunning(),
+      healthy: await go2rtc.health(),
+    },
+    vendor,
   }));
 
-  await app.register(async (api) => {
-    await api.register(authRoutes, { db, prefix: "/auth" });
-    await api.register(userRoutes, { db, prefix: "/users" });
-  }, { prefix: "/api" });
+  await app.register(
+    async (api) => {
+      await api.register(authRoutes, { db, prefix: "/auth" });
+      await api.register(userRoutes, { db, prefix: "/users" });
+      await api.register(cameraRoutes, { db, go2rtc, prefix: "/cameras" });
+    },
+    { prefix: "/api" },
+  );
 
   await app.listen({ host: config.host, port: config.port });
   logger.info(
@@ -69,6 +98,11 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "shutting down");
+    try {
+      await go2rtc.stop();
+    } catch (err) {
+      logger.warn({ err }, "go2rtc stop failed");
+    }
     await app.close();
     process.exit(0);
   };
