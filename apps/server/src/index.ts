@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import fastifyCookie from "@fastify/cookie";
 import fastifySensible from "@fastify/sensible";
+import fastifyWebsocket from "@fastify/websocket";
 import { ZodError } from "zod";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./logger.js";
@@ -12,6 +13,7 @@ import authPlugin from "./auth/plugin.js";
 import { authRoutes } from "./api/auth.js";
 import { userRoutes } from "./api/users.js";
 import { cameraRoutes } from "./api/cameras.js";
+import { streamRoutes } from "./api/streams.js";
 import { Go2rtcService } from "./streaming/go2rtc.js";
 
 import "./auth/types.js";
@@ -55,6 +57,7 @@ async function main() {
   });
   await app.register(fastifyCookie);
   await app.register(fastifySensible);
+  await app.register(fastifyWebsocket);
   await app.register(authPlugin, { jwtSecret: config.jwtSecret });
 
   app.setErrorHandler((err, _req, reply) => {
@@ -90,6 +93,14 @@ async function main() {
     },
     { prefix: "/api" },
   );
+
+  // streamRoutes registers both /api/streams/... and /ws/stream/...,
+  // so it lives at the root and manages its own paths.
+  await app.register(streamRoutes, {
+    db,
+    go2rtc,
+    jwtSecret: config.jwtSecret,
+  });
 
   await app.listen({ host: config.host, port: config.port });
   logger.info(
