@@ -11,8 +11,14 @@ export default function Layout({ children }: { children: ReactNode }) {
     ? [
         ["Dashboard", `/t/${tid}/dashboard`],
         ["Extensions", `/t/${tid}/extensions`],
-        ["Trunks", `/t/${tid}/trunks`],
+        ["Auto-Attendant", `/t/${tid}/ivrs`],
+        ["Ring Groups", `/t/${tid}/ring-groups`],
+        ["Queues", `/t/${tid}/queues`],
+        ["Schedules", `/t/${tid}/schedules`],
+        ["Prompts", `/t/${tid}/prompts`],
         ["Inbound (DIDs)", `/t/${tid}/dids`],
+        ["Outbound Rules", `/t/${tid}/outbound`],
+        ["Trunks", `/t/${tid}/trunks`],
         ["Call Logs", `/t/${tid}/cdr`],
         ["Softphone", `/t/${tid}/softphone`],
       ]

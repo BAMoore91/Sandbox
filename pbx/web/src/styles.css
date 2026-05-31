@@ -89,3 +89,16 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .stat .num { font-size: 30px; font-weight: 700; color: var(--accent); }
 
 .logbox { background: #0b1220; padding: 12px; border-radius: 8px; max-height: 260px; overflow: auto; font-size: 12px; white-space: pre-wrap; }
+
+/* ---- Call-flow editors ---- */
+.row2 { display: flex; gap: 10px; }
+.row2 > label { flex: 1; }
+.subhead { font-weight: 600; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.optrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.destpick { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.destpick > .small { width: 100%; }
+.nowrap { white-space: nowrap; }
+.qcard { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.qhead { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.agents { list-style: none; padding-left: 0; margin: 6px 0; }
+.agents li { display: flex; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }

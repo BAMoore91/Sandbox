@@ -55,6 +55,9 @@ services:
       - asterisk_keys:/etc/asterisk/keys
       - asterisk_spool:/var/spool/asterisk     # voicemail, recordings
       - asterisk_logs:/var/log/asterisk
+      # Customer-uploaded prompts: API writes here, Asterisk plays from
+      # custom/<slug>/<name> (sounds/custom maps to this volume).
+      - asterisk_sounds:/var/lib/asterisk/sounds/custom
     networks:
       pbxnet:
         ipv4_address: 172.20.0.10
@@ -73,6 +76,10 @@ services:
       ASTERISK_ARI_URL: http://asterisk:8088/ari
       ASTERISK_AMI_HOST: asterisk
       ASTERISK_AMI_PORT: 5038
+      SOUNDS_DIR: /sounds
+    volumes:
+      # Same volume Asterisk reads prompts from (custom/<slug>/<name>).
+      - asterisk_sounds:/sounds
     networks:
       pbxnet:
         ipv4_address: 172.20.0.20
@@ -109,6 +116,7 @@ volumes:
   asterisk_keys:
   asterisk_spool:
   asterisk_logs:
+  asterisk_sounds:
 
 networks:
   pbxnet:

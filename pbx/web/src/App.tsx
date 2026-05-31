@@ -9,6 +9,12 @@ import Dids from "./components/Dids";
 import Cdr from "./components/Cdr";
 import Dashboard from "./components/Dashboard";
 import Softphone from "./components/softphone/Softphone";
+import Prompts from "./components/Prompts";
+import Ivrs from "./components/Ivrs";
+import RingGroups from "./components/RingGroups";
+import Queues from "./components/Queues";
+import Schedules from "./components/Schedules";
+import OutboundRoutes from "./components/OutboundRoutes";
 
 function HomeRedirect() {
   const { me } = useAuth();
@@ -73,8 +79,14 @@ function TenantRoutes() {
     <Routes>
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="extensions" element={<Extensions />} />
-      <Route path="trunks" element={<Trunks />} />
+      <Route path="ivrs" element={<Ivrs />} />
+      <Route path="ring-groups" element={<RingGroups />} />
+      <Route path="queues" element={<Queues />} />
+      <Route path="schedules" element={<Schedules />} />
+      <Route path="prompts" element={<Prompts />} />
       <Route path="dids" element={<Dids />} />
+      <Route path="outbound" element={<OutboundRoutes />} />
+      <Route path="trunks" element={<Trunks />} />
       <Route path="cdr" element={<Cdr />} />
       <Route path="softphone" element={<Softphone />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />

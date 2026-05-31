@@ -64,6 +64,8 @@ Then follow:
 1. **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — server prep, firewall, TLS, scaling.
 2. **[docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md)** — create the SIP trunk and wire DIDs.
 3. **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how multi-tenancy & routing work.
+4. **[docs/CUSTOMER_PORTAL.md](docs/CUSTOMER_PORTAL.md)** — the self-service portal:
+   customers control their own call flow and upload their own audio prompts.
 
 ## Repository layout
 

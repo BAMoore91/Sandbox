@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # --- Defaults applied when provisioning new tenants/extensions ---
     public_hostname: str = "pbx.example.com"
 
+    # --- Custom audio prompts (shared volume read by Asterisk) ---
+    # Files are written to <sounds_dir>/<slug>/<name>.wav and referenced in the
+    # dialplan as custom/<slug>/<name>. Asterisk mounts the same volume at
+    # /var/lib/asterisk/sounds/custom, so sounds_dir maps there.
+    sounds_dir: str = "/sounds"
+    max_prompt_bytes: int = 15 * 1024 * 1024
+
     @property
     def dsn(self) -> str:
         return (
