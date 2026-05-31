@@ -60,6 +60,12 @@ removed) on the Settings page. Every sweep is logged to `retention_runs` for
 audit. Endpoints: `GET/PUT /api/tenants/{id}/retention`,
 `POST /api/tenants/{id}/retention/run`, `GET …/retention/runs`.
 
+The scheduled sweep takes a Postgres **advisory lock** (`pg_try_advisory_lock`)
+before running, so when you scale the API to multiple replicas only one runs
+the purge per tick and the rest skip it — no duplicated work or races. The
+manual "Run purge now" endpoint doesn't take the lock (it's an explicit,
+admin-initiated, single action).
+
 File deletion reuses the same tenant-scoped path guard as playback, so a
 purge can only ever touch files inside that tenant's own subtree, and it
 prunes the emptied date directories afterward.

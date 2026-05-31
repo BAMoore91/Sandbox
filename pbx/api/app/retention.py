@@ -18,6 +18,10 @@ from . import db
 from .config import settings
 from .routers.recordings import resolve_recording_path
 
+# Arbitrary, fixed key identifying the "retention sweep" advisory lock. Shared
+# by every API replica so only one runs a scheduled sweep at a time.
+RETENTION_LOCK_KEY = 0x0FB10CC0  # "openpbx lock"
+
 
 async def _purge_tenant(tenant_id: int, slug: str,
                         rec_days: int, cdr_days: int) -> dict:
@@ -122,7 +126,12 @@ async def retention_scheduler(stop: asyncio.Event) -> None:
         pass
     while not stop.is_set():
         try:
-            await run_retention_once()
+            # Across multiple API replicas, only the one that wins the advisory
+            # lock runs the sweep; the others skip this tick. Manual "run now"
+            # via the API is unaffected (it doesn't take the lock).
+            async with db.advisory_lock(RETENTION_LOCK_KEY) as acquired:
+                if acquired:
+                    await run_retention_once()
         except Exception:
             pass  # never let the loop die on a bad sweep
         try:

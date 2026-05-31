@@ -1,6 +1,8 @@
 """Thin asyncpg connection-pool wrapper with small query helpers."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import asyncpg
 
 from .config import settings
@@ -52,3 +54,20 @@ async def execute(query: str, *args) -> str:
 def tx():
     """Return a pooled connection context manager for multi-statement txns."""
     return pool().acquire()
+
+
+@asynccontextmanager
+async def advisory_lock(key: int):
+    """Try to acquire a session-level Postgres advisory lock.
+
+    Yields True if this process won the lock (and releases it on exit), or
+    False immediately if another process already holds it. Used so that with
+    multiple API replicas only one runs the retention sweep at a time.
+    """
+    async with pool().acquire() as con:
+        got = await con.fetchval("SELECT pg_try_advisory_lock($1)", key)
+        try:
+            yield bool(got)
+        finally:
+            if got:
+                await con.fetchval("SELECT pg_advisory_unlock($1)", key)
