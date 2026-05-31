@@ -24,7 +24,8 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
 | **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
 | **Notifications** | per-extension missed-call/voicemail email & SMS alerts + outbox | `/tenants/{id}/notifications` |
-| **Billing & Usage** | metered usage + monthly invoice, CSV export, finalize | `/tenants/{id}/billing` |
+| **Billing & Usage** | metered usage + monthly invoice, CSV export, finalize, Stripe charge, auto-bill | `/tenants/{id}/billing` |
+| **Wallboard** | live calls, queue stats, agent presence (SSE) | `/tenants/{id}/wallboard` |
 | **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
 
@@ -139,6 +140,43 @@ telecom rounding); internal calls are free.
 Endpoints: `GET …/billing/usage`, `GET …/billing/invoice[?format=csv]`,
 `POST …/billing/invoice/finalize`, `GET …/billing/invoices`,
 `GET /api/billing/run[?format=csv]` (super-admin).
+
+## Payments (Stripe) & auto-billing
+
+When `STRIPE_SECRET_KEY` is set, finalized invoices can be charged:
+
+- A tenant gets a Stripe **Customer** lazily (on first charge or when auto-bill
+  is enabled); its id is stored on the tenant.
+- **Charge** (admin, per invoice) creates a confirmed off-session
+  **PaymentIntent** with an idempotency key of `inv-<id>-<amount>` so retries
+  never double-charge. Success → invoice `paid`; decline → `failed` with the
+  reason surfaced in the UI. Zero-total invoices are marked paid without a
+  charge.
+- **Auto-bill** (per tenant): a monthly **scheduler** wakes every
+  `BILLING_CHECK_HOURS` and, on `BILLING_RUN_DAY`, snapshots the *previous*
+  month's invoices for all active tenants and charges those with auto-bill on.
+  It's **advisory-locked** (multi-replica safe) and guarded so it runs at most
+  once per period. Super-admins can also trigger it from Platform Billing, and
+  every run is recorded in `billing_runs`.
+- **Webhook** (`POST /api/billing/webhook`): Stripe `payment_intent.succeeded`
+  / `…payment_failed` events reconcile invoice status. Signature-verified
+  against `STRIPE_WEBHOOK_SECRET` (timestamp-checked to blunt replay). Point
+  Stripe at it over TLS; leave it internal otherwise.
+
+With Stripe unset, everything above is inert: invoices finalize and stay
+`open`, and the charge button is hidden.
+
+## Live wallboard
+
+`/tenants/{id}/wallboard` shows a real-time operations board — active calls,
+per-queue waiting/handled/abandoned counts, and agent presence
+(available / on-call / paused) — built from Asterisk **AMI**
+(`CoreShowChannels` + `QueueStatus`), filtered to the tenant by the
+`<slug>-…` naming convention. The browser subscribes to an **SSE** stream
+(`/wallboard/stream`, ~3s snapshots; nginx buffering disabled for it) and falls
+back to polling if the stream drops. Because EventSource can't set headers, the
+stream authenticates via an `access_token` query param, validated inline with
+the same membership rules as the rest of the tenant API.
 
 ## Uploading prompts (how it works)
 

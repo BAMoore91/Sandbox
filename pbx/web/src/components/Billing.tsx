@@ -26,6 +26,8 @@ export default function Billing() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [inv, setInv] = useState<Invoice | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -38,9 +40,40 @@ export default function Billing() {
       setErr(e.message);
     }
   }
+  async function loadHistory() {
+    try {
+      setHistory(await api.get<any[]>(`${base}/invoices`));
+      setSettings(await api.get<any>(`${base}/settings`));
+    } catch {
+      /* ignore */
+    }
+  }
   useEffect(() => {
     load();
   }, [tid, year, month]);
+  useEffect(() => {
+    loadHistory();
+  }, [tid]);
+
+  async function charge(id: number) {
+    setErr("");
+    setMsg("");
+    try {
+      const r = await api.post<any>(`${base}/invoices/${id}/charge`);
+      setMsg(`Charge ${r.status} for invoice ${id}.`);
+      loadHistory();
+    } catch (e: any) {
+      setErr(e.message);
+    }
+  }
+  async function toggleAutoBill(on: boolean) {
+    setErr("");
+    try {
+      setSettings(await api.put<any>(`${base}/settings`, { auto_bill: on }));
+    } catch (e: any) {
+      setErr(e.message);
+    }
+  }
 
   async function downloadCsv() {
     const res = await fetch(`${base}/invoice?year=${year}&month=${month}&format=csv`, {
@@ -61,6 +94,7 @@ export default function Billing() {
     try {
       const r = await api.post<any>(`${base}/invoice/finalize?year=${year}&month=${month}`);
       setMsg(`Invoice finalized: $${(r.total_cents / 100).toFixed(2)}.`);
+      loadHistory();
     } catch (e: any) {
       setErr(e.message);
     }
@@ -140,6 +174,62 @@ export default function Billing() {
           </div>
         </div>
       )}
+
+      <div className="card">
+        <h3>
+          Finalized invoices
+          {settings && (
+            <span style={{ float: "right", fontSize: 13, fontWeight: 400 }}>
+              {settings.stripe_enabled ? (
+                <label className="row small">
+                  <input
+                    type="checkbox"
+                    checked={!!settings.auto_bill}
+                    onChange={(e) => toggleAutoBill(e.target.checked)}
+                  />{" "}
+                  Auto-charge monthly
+                </label>
+              ) : (
+                <span className="muted small">Stripe not configured</span>
+              )}
+            </span>
+          )}
+        </h3>
+        <table>
+          <thead>
+            <tr><th>Period</th><th>Total</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {history.map((h) => (
+              <tr key={h.id}>
+                <td className="small">{h.period_start} → {h.period_end}</td>
+                <td>{dollars(h.total_cents)}</td>
+                <td>
+                  <span
+                    className={
+                      "pill " +
+                      (h.status === "paid" ? "active" : h.status === "failed" ? "suspended" : "")
+                    }
+                    title={h.last_error || ""}
+                  >
+                    {h.status}
+                  </span>
+                </td>
+                <td>
+                  {settings?.stripe_enabled && h.status !== "paid" && h.total_cents > 0 && (
+                    <button className="btn small" onClick={() => charge(h.id)}>
+                      Charge
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {history.length === 0 && (
+              <tr><td colSpan={4} className="muted">No finalized invoices yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

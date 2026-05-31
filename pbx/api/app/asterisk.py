@@ -110,3 +110,70 @@ async def ami_command(command: str) -> str:
 
 async def pjsip_reload() -> None:
     await ami_command("pjsip reload")
+
+
+async def ami_action(action: dict, terminator: str | None = None,
+                     timeout: float = 5) -> list[dict]:
+    """Run an AMI action and parse the reply into a list of event dicts.
+
+    Reads until an event named `terminator` (e.g. 'QueueStatusComplete') or
+    the socket goes quiet. Each blank-line-delimited block becomes one dict.
+    """
+    try:
+        reader, writer = await asyncio.open_connection(
+            settings.asterisk_ami_host, settings.asterisk_ami_port)
+    except OSError:
+        return []
+
+    async def send(act: dict) -> None:
+        msg = "".join(f"{k}: {v}\r\n" for k, v in act.items()) + "\r\n"
+        writer.write(msg.encode())
+        await writer.drain()
+
+    await reader.readline()  # banner
+    await send({"Action": "Login", "Username": settings.ami_username,
+                "Secret": settings.ami_password})
+    await send(action)
+
+    events: list[dict] = []
+    cur: dict = {}
+    try:
+        while True:
+            line = await asyncio.wait_for(reader.readline(), timeout=timeout)
+            if not line:
+                break
+            text = line.decode(errors="ignore").strip()
+            if text == "":
+                if cur:
+                    events.append(cur)
+                    if terminator and cur.get("Event") == terminator:
+                        break
+                    cur = {}
+                continue
+            if ": " in text:
+                k, v = text.split(": ", 1)
+                cur[k] = v
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        try:
+            await send({"Action": "Logoff"})
+        except Exception:
+            pass
+        writer.close()
+    if cur:
+        events.append(cur)
+    return events
+
+
+async def live_channels() -> list[dict]:
+    """Currently up channels (CoreShowChannels)."""
+    evs = await ami_action({"Action": "CoreShowChannels"},
+                           terminator="CoreShowChannelsComplete")
+    return [e for e in evs if e.get("Event") == "CoreShowChannel"]
+
+
+async def queue_status() -> list[dict]:
+    """Raw QueueStatus events (QueueParams / QueueMember / QueueEntry)."""
+    return await ami_action({"Action": "QueueStatus"},
+                            terminator="QueueStatusComplete")

@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     tid && !isAgent
       ? [
           ["Dashboard", `/t/${tid}/dashboard`],
+          ["Wallboard", `/t/${tid}/wallboard`],
           ["Users & Roles", `/t/${tid}/users`],
           ["Extensions", `/t/${tid}/extensions`],
           ["Auto-Attendant", `/t/${tid}/ivrs`],

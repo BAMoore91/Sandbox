@@ -75,6 +75,21 @@ export default function PlatformBilling() {
           ))}
         </select>
         <button className="btn small" onClick={downloadCsv}>Download CSV</button>
+        <button
+          className="btn small ghost"
+          onClick={async () => {
+            if (!confirm("Finalize last month's invoices for all tenants and charge auto-bill customers?")) return;
+            try {
+              const r = await api.post<any>("/api/billing/autofinalize");
+              setErr("");
+              alert(`Run complete: ${r.invoices_made} invoices, ${r.charges_ok} charged, ${r.charges_failed} failed.`);
+            } catch (e: any) {
+              setErr(e.message);
+            }
+          }}
+        >
+          Run auto-finalize now
+        </button>
       </div>
 
       {run && (

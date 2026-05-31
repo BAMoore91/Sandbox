@@ -75,6 +75,18 @@ class Settings(BaseSettings):
     # Public base URL used to build links in notifications (voicemail/portal).
     public_base_url: str = ""
 
+    # --- Stripe billing ---
+    # If stripe_secret_key is empty, charging is disabled (invoices still
+    # finalize; they just stay 'open'). webhook secret verifies callbacks.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    # Monthly auto-finalize scheduler: on the configured day each month, snapshot
+    # the *previous* month's invoices for every active tenant (and charge those
+    # with auto_bill + a Stripe customer). 0 disables the scheduler.
+    billing_autofinalize_enabled: bool = True
+    billing_run_day: int = 1            # day-of-month to run (1-28)
+    billing_check_hours: int = 6        # how often the scheduler wakes to check
+
     @property
     def dsn(self) -> str:
         return (

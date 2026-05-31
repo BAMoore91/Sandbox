@@ -49,6 +49,8 @@ call logs — billed per subscription plan.
 | Data retention | ✅ per-tenant auto-purge of recordings & CDR (daily sweeper) |
 | Missed-call / voicemail alerts | ✅ per-extension email & SMS (Twilio) notifications |
 | Usage metering & billing | ✅ per-tenant invoices from CDR + plan, CSV export, platform run |
+| Payments | ✅ Stripe charging + monthly auto-finalize + webhook reconciliation |
+| Live wallboard | ✅ real-time calls/queues/agents via AMI (SSE stream) |
 
 ## Quick start
 

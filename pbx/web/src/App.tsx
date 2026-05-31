@@ -22,6 +22,7 @@ import Settings from "./components/Settings";
 import Notifications from "./components/Notifications";
 import Billing from "./components/Billing";
 import PlatformBilling from "./components/PlatformBilling";
+import Wallboard from "./components/Wallboard";
 
 function HomeRedirect() {
   const { me } = useAuth();
@@ -120,6 +121,7 @@ function TenantRoutes() {
   return (
     <Routes>
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="wallboard" element={<Wallboard />} />
       <Route path="users" element={<Users />} />
       <Route path="extensions" element={<Extensions />} />
       <Route path="ivrs" element={<Ivrs />} />

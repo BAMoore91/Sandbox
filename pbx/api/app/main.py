@@ -10,13 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .asterisk import ari_healthy
 from .config import settings
+from .billing import autofinalize_scheduler
 from .notifications import notification_worker
 from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
     auth, billing, calls, cdr, dids, extensions, ivr, me, notifications,
     prompts, queues, recordings, retention, ringgroups, routes, status,
-    tenants, timeconditions, trunks, voicemail,
+    tenants, timeconditions, trunks, voicemail, wallboard,
 )
 
 
@@ -46,6 +47,8 @@ async def lifespan(app: FastAPI):
         tasks.append(asyncio.create_task(retention_scheduler(stop)))
     if settings.notifications_enabled:
         tasks.append(asyncio.create_task(notification_worker(stop)))
+    if settings.billing_autofinalize_enabled and settings.stripe_secret_key is not None:
+        tasks.append(asyncio.create_task(autofinalize_scheduler(stop)))
     yield
     stop.set()
     for task in tasks:
@@ -94,6 +97,7 @@ app.include_router(notifications.router)
 app.include_router(notifications.internal_router)
 app.include_router(billing.router)
 app.include_router(billing.platform_router)
+app.include_router(wallboard.router)
 app.include_router(status.router)
 
 
