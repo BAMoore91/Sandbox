@@ -1,6 +1,7 @@
 """FastAPI application: wiring, lifespan, super-admin bootstrap."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,10 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .asterisk import ari_healthy
 from .config import settings
+from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
     auth, calls, cdr, dids, extensions, ivr, me, prompts, queues, recordings,
-    ringgroups, routes, status, tenants, timeconditions, trunks, voicemail,
+    retention, ringgroups, routes, status, tenants, timeconditions, trunks,
+    voicemail,
 )
 
 
@@ -35,7 +38,19 @@ async def _bootstrap_admin() -> None:
 async def lifespan(app: FastAPI):
     await db.connect()
     await _bootstrap_admin()
+    # Start the background retention sweeper (auto-purge old recordings/CDR).
+    stop = asyncio.Event()
+    task = None
+    if settings.retention_enabled and settings.retention_interval_hours > 0:
+        task = asyncio.create_task(retention_scheduler(stop))
     yield
+    stop.set()
+    if task:
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
     await db.disconnect()
 
 
@@ -71,6 +86,7 @@ app.include_router(voicemail.router)
 app.include_router(calls.router)
 app.include_router(cdr.router)
 app.include_router(recordings.router)
+app.include_router(retention.router)
 app.include_router(status.router)
 
 

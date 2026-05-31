@@ -83,8 +83,9 @@ services:
     volumes:
       # Same volume Asterisk reads prompts from (custom/<slug>/<name>).
       - asterisk_sounds:/sounds
-      # Read-only access to recordings Asterisk wrote, for portal playback.
-      - asterisk_monitor:/recordings:ro
+      # Recordings Asterisk wrote: read for playback, and writable so the
+      # retention sweeper can delete files past their tenant's window.
+      - asterisk_monitor:/recordings
     networks:
       pbxnet:
         ipv4_address: 172.20.0.20

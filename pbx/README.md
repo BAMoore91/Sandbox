@@ -45,7 +45,8 @@ call logs — billed per subscription plan.
 | Outbound rules / caller ID | ✅ pattern routes, per-route CID, digit manipulation |
 | Click-to-call | ✅ via ARI originate |
 | Call reporting / CDR | ✅ per-tenant CDR + summaries |
-| Call recording | ✅ hook points (MixMonitor) + `recordings` catalog |
+| Call recording | ✅ MixMonitor capture + portal playback/download |
+| Data retention | ✅ per-tenant auto-purge of recordings & CDR (daily sweeper) |
 
 ## Quick start
 

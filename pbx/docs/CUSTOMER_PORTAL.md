@@ -22,7 +22,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Trunks** | view shared trunk / add own Twilio trunk | `/trunks` |
 | **Call Logs** | filterable CDR | `/cdr` |
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
-| **Settings** | company name, timezone, recording on/off | `/tenants/{id}` |
+| **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
 | **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
 
@@ -42,6 +42,27 @@ read-only), resolving each stored path against the tenant's own subtree and
 refusing anything that escapes it (path-traversal safe). Admins manage all of
 the company's recordings under **Recordings**; agents can replay recordings of
 **their own** calls from their call history in **My Phone**.
+
+## Data retention (auto-purge)
+
+Each company sets retention windows under **Settings → Data Retention**:
+
+- **Recordings older than N days** — deletes both the audio file (from the
+  shared monitor volume) and its catalog row.
+- **Call logs (CDR) older than N days** — deletes old `cdr` rows.
+- **0 = keep forever** (no purge for that data type).
+
+A background sweeper in the API (`api/app/retention.py`, started from the app
+lifespan) runs once a day — `RETENTION_INTERVAL_HOURS`, or set
+`RETENTION_ENABLED=false` to drive it from an external cron instead. Admins can
+also **Run purge now** and see the last sweeps (counts of recordings/CDR/files
+removed) on the Settings page. Every sweep is logged to `retention_runs` for
+audit. Endpoints: `GET/PUT /api/tenants/{id}/retention`,
+`POST /api/tenants/{id}/retention/run`, `GET …/retention/runs`.
+
+File deletion reuses the same tenant-scoped path guard as playback, so a
+purge can only ever touch files inside that tenant's own subtree, and it
+prunes the emptied date directories afterward.
 
 ## Uploading prompts (how it works)
 

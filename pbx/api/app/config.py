@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # cdr.recording / recordings.path store the path relative to this dir.
     recordings_dir: str = "/recordings"
 
+    # --- Data retention sweeper ---
+    # Set to 0 to disable the in-process scheduler (e.g. if you run the purge
+    # from an external cron hitting the admin "run now" endpoint instead).
+    retention_interval_hours: int = 24
+    retention_enabled: bool = True
+
     @property
     def dsn(self) -> str:
         return (
