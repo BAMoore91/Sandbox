@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, getToken } from "../api";
 
 // Self-service surface for an `agent` role: manage only their own extension.
 interface MyExt {
@@ -26,6 +26,7 @@ interface Call {
   direction: string;
   billsec: number;
   disposition: string;
+  recording_id: number | null;
 }
 
 export default function AgentPortal() {
@@ -93,6 +94,18 @@ export default function AgentPortal() {
     } catch (e: any) {
       setErr(e.message);
     }
+  }
+
+  async function playRecording(id: number, el: HTMLAudioElement) {
+    const res = await fetch(`/api/me/recordings/${id}/audio`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      setErr(res.status === 404 ? "Recording not available." : "Cannot play recording.");
+      return;
+    }
+    el.src = URL.createObjectURL(await res.blob());
+    el.play();
   }
 
   if (!me) return <div className="center">Loading…</div>;
@@ -220,6 +233,7 @@ export default function AgentPortal() {
               <th>To</th>
               <th>Sec</th>
               <th>Result</th>
+              <th>Recording</th>
             </tr>
           </thead>
           <tbody>
@@ -233,11 +247,33 @@ export default function AgentPortal() {
                 <td>{c.dst}</td>
                 <td>{c.billsec}</td>
                 <td className="small">{c.disposition}</td>
+                <td>
+                  {c.recording_id ? (
+                    <>
+                      <audio id={`mrec-${c.recording_id}`} />
+                      <button
+                        className="btn small ghost"
+                        onClick={() =>
+                          playRecording(
+                            c.recording_id!,
+                            document.getElementById(
+                              `mrec-${c.recording_id}`
+                            ) as HTMLAudioElement
+                          )
+                        }
+                      >
+                        ▶
+                      </button>
+                    </>
+                  ) : (
+                    <span className="muted small">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {calls.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={7} className="muted">
                   No calls yet.
                 </td>
               </tr>

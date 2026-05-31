@@ -9,15 +9,18 @@ user has no linked extension, these endpoints return 404 (nothing to manage).
 """
 from __future__ import annotations
 
+import os
 import secrets
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .. import db
 from ..asterisk import hangup_channel, originate_click_to_call, pjsip_reload
 from ..deps import Principal, current_user
+from .recordings import resolve_recording_path
 
 router = APIRouter(prefix="/api/me", tags=["agent-self-service"])
 
@@ -122,16 +125,40 @@ async def update_self(body: SelfPatch, user: Principal = Depends(current_user)) 
 
 @router.get("/calls")
 async def my_calls(user: Principal = Depends(current_user), limit: int = 50) -> list[dict]:
-    """The signed-in agent's own recent call history (as src or dst)."""
+    """The signed-in agent's own recent call history (as src or dst).
+
+    Each row carries a `recording_id` when a recording exists for that call, so
+    the portal can offer playback via /api/me/recordings/{id}/audio.
+    """
     ext = await _my_extension(user)
     limit = max(1, min(limit, 200))
     rows = await db.fetch(
-        """SELECT calldate, src, dst, direction, did, billsec, disposition, recording
-           FROM cdr
-           WHERE tenant_id = $1 AND (src = $2 OR dst = $2)
-           ORDER BY calldate DESC LIMIT $3""",
+        """SELECT c.calldate, c.src, c.dst, c.direction, c.did, c.billsec,
+                  c.disposition, r.id AS recording_id
+           FROM cdr c
+           LEFT JOIN recordings r ON r.uniqueid = c.uniqueid AND r.tenant_id = c.tenant_id
+           WHERE c.tenant_id = $1 AND (c.src = $2 OR c.dst = $2)
+           ORDER BY c.calldate DESC LIMIT $3""",
         ext["tenant_id"], ext["extension"], limit)
     return [dict(r) for r in rows]
+
+
+@router.get("/recordings/{recording_id}/audio")
+async def my_recording(recording_id: int, user: Principal = Depends(current_user)):
+    """Stream a recording, but only if the agent's own extension was on the call."""
+    ext = await _my_extension(user)
+    row = await db.fetchrow(
+        "SELECT path, src, dst FROM recordings WHERE id=$1 AND tenant_id=$2",
+        recording_id, ext["tenant_id"])
+    if not row:
+        raise HTTPException(404, "recording not found")
+    if ext["extension"] not in (row["src"], row["dst"]):
+        raise HTTPException(403, "not a participant on this call")
+    path = resolve_recording_path(ext["tenant_slug"], row["path"])
+    if not os.path.exists(path):
+        raise HTTPException(404, "recording file not found")
+    return FileResponse(path, media_type="audio/wav",
+                        filename=os.path.basename(path))
 
 
 @router.post("/regenerate-sip-password")

@@ -58,6 +58,8 @@ services:
       # Customer-uploaded prompts: API writes here, Asterisk plays from
       # custom/<slug>/<name> (sounds/custom maps to this volume).
       - asterisk_sounds:/var/lib/asterisk/sounds/custom
+      # Call recordings: Asterisk (MixMonitor) writes, API reads for playback.
+      - asterisk_monitor:/var/spool/asterisk/monitor
     networks:
       pbxnet:
         ipv4_address: 172.20.0.10
@@ -77,9 +79,12 @@ services:
       ASTERISK_AMI_HOST: asterisk
       ASTERISK_AMI_PORT: 5038
       SOUNDS_DIR: /sounds
+      RECORDINGS_DIR: /recordings
     volumes:
       # Same volume Asterisk reads prompts from (custom/<slug>/<name>).
       - asterisk_sounds:/sounds
+      # Read-only access to recordings Asterisk wrote, for portal playback.
+      - asterisk_monitor:/recordings:ro
     networks:
       pbxnet:
         ipv4_address: 172.20.0.20
@@ -117,6 +122,7 @@ volumes:
   asterisk_spool:
   asterisk_logs:
   asterisk_sounds:
+  asterisk_monitor:
 
 networks:
   pbxnet:

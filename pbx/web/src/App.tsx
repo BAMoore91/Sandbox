@@ -17,6 +17,8 @@ import Schedules from "./components/Schedules";
 import OutboundRoutes from "./components/OutboundRoutes";
 import AgentPortal from "./components/AgentPortal";
 import Users from "./components/Users";
+import Recordings from "./components/Recordings";
+import Settings from "./components/Settings";
 
 function HomeRedirect() {
   const { me } = useAuth();
@@ -115,6 +117,8 @@ function TenantRoutes() {
       <Route path="outbound" element={<OutboundRoutes />} />
       <Route path="trunks" element={<Trunks />} />
       <Route path="cdr" element={<Cdr />} />
+      <Route path="recordings" element={<Recordings />} />
+      <Route path="settings" element={<Settings />} />
       <Route path="softphone" element={<Softphone />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>

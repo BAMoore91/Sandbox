@@ -34,6 +34,7 @@ class TenantPatch(BaseModel):
     status: str | None = None
     timezone: str | None = None
     billing_email: EmailStr | None = None
+    recording_enabled: bool | None = None
 
 
 # ---- Plans ----------------------------------------------------------------
@@ -109,7 +110,7 @@ async def get_tenant(tenant_id: int = Depends(tenant_scope)) -> dict:
 async def update_tenant(body: TenantPatch,
                         tenant_id: int = Depends(tenant_scope)) -> dict:
     sets, vals = [], []
-    for field in ("name", "status", "timezone", "billing_email"):
+    for field in ("name", "status", "timezone", "billing_email", "recording_enabled"):
         v = getattr(body, field)
         if v is not None:
             vals.append(v)

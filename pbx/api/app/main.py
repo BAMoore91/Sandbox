@@ -11,8 +11,8 @@ from .asterisk import ari_healthy
 from .config import settings
 from .security import hash_password
 from .routers import (
-    auth, calls, cdr, dids, extensions, ivr, me, prompts, queues, ringgroups,
-    routes, status, tenants, timeconditions, trunks, voicemail,
+    auth, calls, cdr, dids, extensions, ivr, me, prompts, queues, recordings,
+    ringgroups, routes, status, tenants, timeconditions, trunks, voicemail,
 )
 
 
@@ -70,6 +70,7 @@ app.include_router(prompts.router)
 app.include_router(voicemail.router)
 app.include_router(calls.router)
 app.include_router(cdr.router)
+app.include_router(recordings.router)
 app.include_router(status.router)
 
 

@@ -35,10 +35,22 @@ async def current_user(
         payload = decode_token(creds.credentials)
     except Exception:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
+
+    # The JWT identifies the user; authoritative role/tenant/active state is
+    # re-read from the DB on every request, so promote/demote/disable take
+    # effect immediately rather than at next login (token expiry).
+    row = await db.fetchrow(
+        "SELECT tenant_id, role, is_active FROM users WHERE id = $1",
+        int(payload["sub"]),
+    )
+    if row is None or not row["is_active"]:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Account disabled or no longer exists"
+        )
     return Principal(
         user_id=int(payload["sub"]),
-        tenant_id=payload.get("tid"),
-        role=payload.get("role", "agent"),
+        tenant_id=row["tenant_id"],
+        role=row["role"],
     )
 
 

@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     sounds_dir: str = "/sounds"
     max_prompt_bytes: int = 15 * 1024 * 1024
 
+    # --- Call recordings (shared volume written by Asterisk MixMonitor) ---
+    # Asterisk writes to /var/spool/asterisk/monitor/<slug>/<date>/<id>.wav;
+    # cdr.recording / recordings.path store the path relative to this dir.
+    recordings_dir: str = "/recordings"
+
     @property
     def dsn(self) -> str:
         return (

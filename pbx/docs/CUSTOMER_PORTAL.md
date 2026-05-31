@@ -21,7 +21,27 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Outbound Rules** | dial patterns → trunk, caller ID, digit manipulation | `/outbound-routes` |
 | **Trunks** | view shared trunk / add own Twilio trunk | `/trunks` |
 | **Call Logs** | filterable CDR | `/cdr` |
+| **Recordings** | list / play / download / delete call recordings | `/recordings` |
+| **Settings** | company name, timezone, recording on/off | `/tenants/{id}` |
+| **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
+
+## Call recording
+
+Recording is a per-company toggle (Settings → Call Recording), gated by the
+plan's `recording` feature flag. When on, the dialplan runs `MixMonitor` on
+answered calls (via the `start-recording` subroutine), mixing both legs into:
+
+```
+/var/spool/asterisk/monitor/<tenant_slug>/<YYYY>/<MM>/<DD>/<uniqueid>.wav
+```
+
+That path is stamped into `cdr.recording` and catalogued in the `recordings`
+table. The API serves audio back from the same shared volume (mounted
+read-only), resolving each stored path against the tenant's own subtree and
+refusing anything that escapes it (path-traversal safe). Admins manage all of
+the company's recordings under **Recordings**; agents can replay recordings of
+**their own** calls from their call history in **My Phone**.
 
 ## Uploading prompts (how it works)
 
@@ -87,8 +107,11 @@ Authorization is enforced server-side, not just in the UI:
   password regeneration, voicemail PIN, click-to-call, and personal call
   history. With no linked extension these return `404`.
 
-Roles are carried as a claim in the JWT, so a role change takes effect on the
-user's next login.
+The JWT only identifies the user; their role, tenant, and active flag are
+re-read from the database on **every request**. So promoting/demoting a user or
+disabling their account takes effect **immediately** — a disabled user's
+existing token is rejected (`401`) on its next call, with no need to wait for
+token expiry.
 
 ### Managing users (admin)
 
