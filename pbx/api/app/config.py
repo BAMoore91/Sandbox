@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     fax_dir: str = "/fax"
     fax_stasis_app: str = "openpbx-fax"
 
+    # --- Call journaling (forward CDRs to external DB / webhook) ---
+    call_journal_enabled: bool = True
+    call_journal_interval_seconds: int = 30
+
     # --- Flows (Studio-style call flows) + voice transcription ---
     # ARI Stasis app name the dialplan hands flow calls to.
     flow_stasis_app: str = "openpbx-flow"

@@ -8,6 +8,7 @@ import Phones from "./components/Phones";
 import Trunks from "./components/Trunks";
 import Dids from "./components/Dids";
 import Cdr from "./components/Cdr";
+import CallJournal from "./components/CallJournal";
 import Dashboard from "./components/Dashboard";
 import Softphone from "./components/softphone/Softphone";
 import Prompts from "./components/Prompts";
@@ -139,6 +140,7 @@ function TenantRoutes() {
       <Route path="outbound" element={<OutboundRoutes />} />
       <Route path="trunks" element={<Trunks />} />
       <Route path="cdr" element={<Cdr />} />
+      <Route path="call-journal" element={<CallJournal />} />
       <Route path="recordings" element={<Recordings />} />
       <Route path="notifications" element={<Notifications />} />
       <Route path="billing" element={<Billing />} />

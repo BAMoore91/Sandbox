@@ -21,6 +21,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Outbound Rules** | dial patterns → trunk, caller ID, digit manipulation | `/outbound-routes` |
 | **Trunks** | view shared trunk / add own Twilio trunk | `/trunks` |
 | **Call Logs** | filterable CDR | `/cdr` |
+| **Call Journaling** | forward all CDRs to an external DB / webhook | `/call-journal` |
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
 | **Fax** | fax boxes (inbound→email), send-fax (PDF), fax history | `/fax` |
 | **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
@@ -167,6 +168,33 @@ When `STRIPE_SECRET_KEY` is set, finalized invoices can be charged:
 
 With Stripe unset, everything above is inert: invoices finalize and stay
 `open`, and the charge button is hidden.
+
+## Call journaling (forward CDRs to an external system)
+
+Every call record can be streamed to an external system for archival,
+analytics, or compliance — without giving anyone access to the PBX database.
+Configure one or more **sinks** under **Call Journaling**:
+
+- **External PostgreSQL** — rows are `INSERT`ed into a table (auto-created) in
+  any reachable PostgreSQL via a connection string; idempotent
+  `ON CONFLICT (id) DO NOTHING`.
+- **HTTP webhook** — batches are `POST`ed as JSON (`{source, count, calls[]}`)
+  to a URL, with an optional `Authorization` header.
+
+A sink is scoped to the company; a super-admin can also create a
+**platform-wide** sink that forwards *every* tenant's calls.
+
+**Reliability.** `cdr.id` is monotonic, so each sink keeps a durable **cursor**
+(the highest id it has confirmed delivered) and a background worker forwards
+`id > cursor` in id order every `CALL_JOURNAL_INTERVAL_SECONDS`, advancing the
+cursor only for rows the destination accepted. A failure retries from the
+cursor — **no loss, no duplicates**. Each pass is recorded in
+`call_journal_runs`, and the sink shows `delivered_total`, current cursor, and
+last status/error. **Test** checks connectivity and **Run now** forces an
+immediate pass. DSNs / auth headers are write-only (masked in the UI).
+
+Endpoints: `GET/POST/PUT/DELETE …/call-journal`, `…/{id}/test`, `…/{id}/run`,
+`…/{id}/runs`.
 
 ## Live wallboard
 

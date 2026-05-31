@@ -13,11 +13,13 @@ from .config import settings
 from .billing import autofinalize_scheduler
 from .flow_ari import stasis_listener
 from .fax import fax_stasis_listener
+from .call_journal import journal_worker
 from .notifications import notification_worker
 from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
-    auth, billing, calls, cdr, dids, extensions, fax, flows, ivr, me, notifications,
+    auth, billing, call_journal, calls, cdr, dids, extensions, fax, flows, ivr,
+    me, notifications,
     prompts, provisioning, queues, recordings, retention, ringgroups, routes,
     status, tenants, timeconditions, trunks, twilio_integration, voicemail,
     wallboard,
@@ -56,6 +58,9 @@ async def lifespan(app: FastAPI):
     tasks.append(asyncio.create_task(stasis_listener(stop)))
     # Fax engine: Stasis completion events for inbound/outbound faxes.
     tasks.append(asyncio.create_task(fax_stasis_listener(stop)))
+    # Call journaling: forward CDRs to external sinks on an interval.
+    if settings.call_journal_enabled:
+        tasks.append(asyncio.create_task(journal_worker(stop)))
     yield
     stop.set()
     for task in tasks:
@@ -111,6 +116,7 @@ app.include_router(provisioning.keys_router)
 app.include_router(provisioning.fetch_router)
 app.include_router(flows.router)
 app.include_router(fax.router)
+app.include_router(call_journal.router)
 app.include_router(status.router)
 
 
