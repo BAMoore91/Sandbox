@@ -12,6 +12,7 @@ import Dashboard from "./components/Dashboard";
 import Softphone from "./components/softphone/Softphone";
 import Prompts from "./components/Prompts";
 import Ivrs from "./components/Ivrs";
+import Flows from "./components/Flows";
 import RingGroups from "./components/RingGroups";
 import Queues from "./components/Queues";
 import Schedules from "./components/Schedules";
@@ -127,6 +128,7 @@ function TenantRoutes() {
       <Route path="extensions" element={<Extensions />} />
       <Route path="phones" element={<Phones />} />
       <Route path="ivrs" element={<Ivrs />} />
+      <Route path="flows" element={<Flows />} />
       <Route path="ring-groups" element={<RingGroups />} />
       <Route path="queues" element={<Queues />} />
       <Route path="schedules" element={<Schedules />} />

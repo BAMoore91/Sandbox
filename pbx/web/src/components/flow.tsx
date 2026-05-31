@@ -8,6 +8,7 @@ export const DEST_TYPES = [
   "ringgroup",
   "queue",
   "ivr",
+  "flow",
   "voicemail",
   "timecondition",
   "hangup",

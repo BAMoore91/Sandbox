@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     # SIP port advertised to provisioned desk phones (matches the UDP transport).
     sip_udp_port: int = 5060
 
+    # --- Flows (Studio-style call flows) + voice transcription ---
+    # ARI Stasis app name the dialplan hands flow calls to.
+    flow_stasis_app: str = "openpbx-flow"
+    # Transcription backend for 'record' widgets. "openai" uses the Whisper
+    # API; empty disables transcription (recordings are still saved).
+    transcription_provider: str = ""           # "openai" | ""
+    openai_api_key: str = ""
+    openai_transcribe_model: str = "whisper-1"
+
     # --- Data retention sweeper ---
     # Set to 0 to disable the in-process scheduler (e.g. if you run the purge
     # from an external cron hitting the admin "run now" endpoint instead).

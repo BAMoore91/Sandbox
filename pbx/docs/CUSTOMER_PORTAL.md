@@ -179,6 +179,51 @@ back to polling if the stream drops. Because EventSource can't set headers, the
 stream authenticates via an `access_token` query param, validated inline with
 the same membership rules as the rest of the tenant API.
 
+## Flows (Studio-style call flows)
+
+Flows are a JSON graph of **widgets** executed per call by an ARI **Stasis**
+app the API hosts. Point a phone number (or any destination) at a flow
+(`dest_type=flow`) to run it. Widget types:
+
+| Widget | Does | Exits |
+|---|---|---|
+| `say` | play TTS / a prompt | `next` |
+| `gather` | collect DTMF into a variable | per-digit `transitions` + `default` |
+| `record` | capture caller audio, optional transcription | `next` |
+| `http` | GET/POST **webhook**; capture JSON response into vars | `success` / `failure` |
+| `branch` | route on a variable's value | `cases` + `default` |
+| `dial` | call an extension/number | `answered` / `noanswer` |
+| `route` | hand off to the dialplan dispatcher (queue/ext/vm/IVR…) | terminal |
+| `hangup` | end the call | terminal |
+
+**Variables & templating.** Each execution starts with `caller`, `did`,
+`tenant`, and accumulates whatever `gather`/`record`/`http` capture. Any
+`text`, `url`, header, or body supports `{{var}}` / `{{a.b}}` placeholders, so a
+webhook can post the caller's number and a later `say` can read back a value
+the webhook returned.
+
+**Webhooks (GET & POST).** An `http` widget calls an external URL; POST can send
+a templated JSON body. Response fields are captured via
+`save: {var: "json.path"}` (dotted paths into the JSON), and the HTTP status is
+exposed as `last_status`; `success`/`failure` branch on the status code. Every
+call is recorded in `flow_webhook_log`.
+
+**Voice capture + transcription.** A `record` widget saves a WAV (under the
+recordings volume) and, if `transcribe:true` and `TRANSCRIPTION_PROVIDER` is set
+(e.g. OpenAI Whisper), stores the transcript on `flow_recordings`. With no
+provider, the recording is saved and marked `disabled`.
+
+**Editing & testing.** The **Flows** page edits the JSON graph with live
+**Validate** (catches dangling widget references, bad types, missing URLs) and a
+**Test run** that executes the flow with scripted key presses against a
+simulated channel — **webhooks fire for real** during a test, so GET/POST
+integrations can be verified before going live. Execution history, the path
+taken, captured recordings/transcripts, and webhook logs are queryable per flow.
+
+The engine is driver-abstracted (`api/app/flow_engine.py`) and unit-tested
+(`api/tests/test_flow_engine.py`); the ARI driver (`flow_ari.py`) supplies the
+media actions in production.
+
 ## Auto phone provisioning & BLF keys
 
 Physical desk phones are zero-touch provisioned by MAC:

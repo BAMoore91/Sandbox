@@ -9,3 +9,4 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.2.1
 httpx==0.28.1
 python-multipart==0.0.18
+websockets==13.1

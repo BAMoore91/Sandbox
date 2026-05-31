@@ -53,6 +53,7 @@ call logs — billed per subscription plan.
 | Live wallboard | ✅ real-time calls/queues/agents via AMI (SSE stream) |
 | Auto phone provisioning | ✅ Yealink/Grandstream config-by-MAC, token-guarded |
 | BLF / programmable keys | ✅ per-extension BLF/speed-dial keys + dialplan hints |
+| Flows (Studio-style) | ✅ say/gather/record, GET/POST webhooks, branch, route, transcription |
 
 ## Quick start
 
