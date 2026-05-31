@@ -35,6 +35,7 @@ call logs — billed per subscription plan.
 | Multi-tenant / multi-company | ✅ native (tenant-scoped everything) |
 | Subscription plans & limits | ✅ `plans` (ext caps, simultaneous calls, feature flags) |
 | SIP trunk (Twilio) | ✅ Elastic SIP Trunking, credentials or IP-ACL, secure trunking |
+| Twilio auto-provision | ✅ create trunk + import numbers from a Twilio account (SID/API key) |
 | Extensions (SIP + WebRTC) | ✅ realtime PJSIP, browser softphone (SIP.js) |
 | DIDs / inbound routing | ✅ DID → tenant → destination |
 | IVR / digital receptionist | ✅ multi-level, timeout/invalid handling, direct dial |

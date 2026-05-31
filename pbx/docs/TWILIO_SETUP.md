@@ -15,7 +15,34 @@ OpenPBX represents each Twilio trunk as a PJSIP endpoint `trunk-<id>` whose
 context is `from-twilio`. Inbound calls are routed by the **dialed DID**, so a
 single trunk can serve many tenants — the DID determines the tenant.
 
-## 1. Create the trunk in Twilio
+## Option A — Auto-provision (recommended)
+
+If you'd rather not configure anything by hand, OpenPBX can build the trunk for
+you from your Twilio account credentials. In the portal: **Trunks → ⚡
+Auto-provision from Twilio account**.
+
+1. **Connect** the account: enter the **Account SID** + auth token, or an API
+   Key SID + secret (preferred for production). The credentials are verified
+   against Twilio before being stored, and the secret is masked thereafter.
+   API/CLI: `PUT /api/tenants/{id}/twilio/account`.
+2. **Auto-provision SIP trunk** — OpenPBX calls Twilio's Trunking API to create:
+   - an **Elastic SIP Trunk** with a `<prefix>.pstn.twilio.com` termination domain,
+   - a **credential list** + credential for termination auth (generated secret),
+   - an **origination URL** pointing at this PBX
+     (`sip:<PUBLIC_HOSTNAME>:5060`, or `:5061;transport=tls` if secure),
+   and wires the matching local trunk + PJSIP rows automatically.
+   API: `POST /api/tenants/{id}/twilio/provision-trunk`.
+3. **Import phone numbers** — pull the account's `IncomingPhoneNumbers` and
+   create them as inbound DIDs (idempotent; re-import skips existing), and
+   optionally point each Twilio number's inbound at the new trunk.
+   API: `GET …/twilio/numbers`, `POST …/twilio/import-numbers`.
+
+Credentials are stored **per tenant** (`twilio_accounts`), so each company
+connects its own Twilio account. To do it manually instead, use Option B.
+
+## Option B — Manual setup
+
+### 1. Create the trunk in Twilio
 
 1. Twilio Console → **Elastic SIP Trunking → Trunks → Create**.
 2. Note the **Termination SIP URI**, e.g. `your-trunk.pstn.twilio.com`.

@@ -24,6 +24,52 @@ export default function Trunks() {
   async function load() { setList(await api.get<Trunk[]>(base)); }
   useEffect(() => { load(); }, [tid]);
 
+  // ---- Twilio account integration (auto-provision + import numbers) ----
+  const twBase = `/api/tenants/${tid}/twilio`;
+  const [tw, setTw] = useState<any>(null);
+  const [creds, setCreds] = useState({ account_sid: "", auth_token: "", api_key_sid: "", api_key_secret: "" });
+  const [twMsg, setTwMsg] = useState("");
+  const [twErr, setTwErr] = useState("");
+  const [twBusy, setTwBusy] = useState(false);
+
+  async function loadTw() {
+    try { setTw(await api.get<any>(`${twBase}/account`)); } catch { /* ignore */ }
+  }
+  useEffect(() => { loadTw(); }, [tid]);
+
+  async function saveCreds(e: React.FormEvent) {
+    e.preventDefault(); setTwErr(""); setTwMsg(""); setTwBusy(true);
+    try {
+      const r = await api.put<any>(`${twBase}/account`, {
+        account_sid: creds.account_sid,
+        auth_token: creds.auth_token || undefined,
+        api_key_sid: creds.api_key_sid || undefined,
+        api_key_secret: creds.api_key_secret || undefined,
+      });
+      setTwMsg(`Verified Twilio account ${r.account?.friendly_name || ""}.`);
+      setCreds({ account_sid: "", auth_token: "", api_key_sid: "", api_key_secret: "" });
+      loadTw();
+    } catch (e: any) { setTwErr(typeof e.message === "string" ? e.message : JSON.stringify(e.message)); }
+    finally { setTwBusy(false); }
+  }
+  async function provisionTrunk() {
+    setTwErr(""); setTwMsg(""); setTwBusy(true);
+    try {
+      const r = await api.post<any>(`${twBase}/provision-trunk`, { name: "Twilio Trunk" });
+      setTwMsg(`Trunk created on Twilio (${r.twilio_trunk_sid}); origination → ${r.origination_url}.`);
+      loadTw(); load();
+    } catch (e: any) { setTwErr(typeof e.message === "string" ? e.message : JSON.stringify(e.message)); }
+    finally { setTwBusy(false); }
+  }
+  async function importNumbers() {
+    setTwErr(""); setTwMsg(""); setTwBusy(true);
+    try {
+      const r = await api.post<any>(`${twBase}/import-numbers`, { dest_type: "ivr", dest_value: "500", attach_to_trunk: true });
+      setTwMsg(`Imported ${r.imported} number(s); ${r.skipped_existing} already existed; ${r.attached_to_trunk} attached to trunk.`);
+    } catch (e: any) { setTwErr(typeof e.message === "string" ? e.message : JSON.stringify(e.message)); }
+    finally { setTwBusy(false); }
+  }
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
@@ -38,9 +84,61 @@ export default function Trunks() {
   return (
     <div>
       <h2>SIP Trunks</h2>
+
+      <div className="card">
+        <h3>⚡ Auto-provision from Twilio account</h3>
+        <p className="muted small">
+          Connect your Twilio account with its <b>Account SID</b> + auth token
+          (or an API key/secret). We'll create the Elastic SIP Trunk for you —
+          trunk, termination credentials, and an origination URL pointing back
+          at this PBX — and import your phone numbers as inbound DIDs.
+        </p>
+        {twMsg && <div className="callout">{twMsg}</div>}
+        {twErr && <div className="error">{twErr}</div>}
+        {tw?.account_sid ? (
+          <div className="form">
+            <div className="small">
+              Connected account <code>{tw.account_sid}</code>
+              {tw.trunk_sid && <> · trunk <code>{tw.trunk_sid}</code></>}
+              {tw.domain_prefix && <> · <code>{tw.domain_prefix}.pstn.twilio.com</code></>}
+            </div>
+            <div className="optrow">
+              {!tw.trunk_sid && (
+                <button className="btn" disabled={twBusy} onClick={provisionTrunk}>
+                  {twBusy ? "Provisioning…" : "Auto-provision SIP trunk"}
+                </button>
+              )}
+              <button className="btn ghost" disabled={twBusy} onClick={importNumbers}>
+                {twBusy ? "Working…" : "Import phone numbers"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form className="form" onSubmit={saveCreds}>
+            <label>Account SID
+              <input value={creds.account_sid} placeholder="AC…"
+                onChange={(e) => setCreds({ ...creds, account_sid: e.target.value })} required /></label>
+            <label>Auth token (or use an API key below)
+              <input type="password" value={creds.auth_token}
+                onChange={(e) => setCreds({ ...creds, auth_token: e.target.value })} /></label>
+            <div className="row2">
+              <label>API key SID (optional)
+                <input value={creds.api_key_sid} placeholder="SK…"
+                  onChange={(e) => setCreds({ ...creds, api_key_sid: e.target.value })} /></label>
+              <label>API key secret
+                <input type="password" value={creds.api_key_secret}
+                  onChange={(e) => setCreds({ ...creds, api_key_secret: e.target.value })} /></label>
+            </div>
+            <button className="btn" disabled={twBusy}>
+              {twBusy ? "Verifying…" : "Connect Twilio account"}
+            </button>
+          </form>
+        )}
+      </div>
+
       <div className="grid2">
         <div className="card">
-          <h3>Add Twilio trunk</h3>
+          <h3>Add Twilio trunk (manual)</h3>
           <p className="muted small">
             From Twilio Console → Elastic SIP Trunking → your trunk → Termination.
             Use the <b>Termination SIP URI</b> host below and a credential-list user.

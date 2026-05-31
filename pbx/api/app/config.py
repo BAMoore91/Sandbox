@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     provision_base_url: str = ""
     # SIP port advertised to provisioned desk phones (matches the UDP transport).
     sip_udp_port: int = 5060
+    sip_tls_port: int = 5061     # used for secure (TLS) Twilio origination URLs
 
     # --- Flows (Studio-style call flows) + voice transcription ---
     # ARI Stasis app name the dialplan hands flow calls to.

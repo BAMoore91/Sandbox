@@ -18,7 +18,8 @@ from .security import hash_password
 from .routers import (
     auth, billing, calls, cdr, dids, extensions, flows, ivr, me, notifications,
     prompts, provisioning, queues, recordings, retention, ringgroups, routes,
-    status, tenants, timeconditions, trunks, voicemail, wallboard,
+    status, tenants, timeconditions, trunks, twilio_integration, voicemail,
+    wallboard,
 )
 
 
@@ -84,6 +85,7 @@ app.include_router(me.router)
 app.include_router(tenants.router)
 app.include_router(extensions.router)
 app.include_router(trunks.router)
+app.include_router(twilio_integration.router)
 app.include_router(routes.router)
 app.include_router(dids.router)
 app.include_router(ringgroups.router)
