@@ -26,13 +26,49 @@ export default function Prompts() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // AI prompt generation (TTS)
+  const [tts, setTts] = useState<{ enabled: boolean; voices: string[]; default_voice: string } | null>(null);
+  const [genName, setGenName] = useState("");
+  const [genKind, setGenKind] = useState("greeting");
+  const [genText, setGenText] = useState("");
+  const [genVoice, setGenVoice] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genMsg, setGenMsg] = useState("");
+
   const base = `/api/tenants/${tid}/prompts`;
   async function load() {
     setList(await api.get<Prompt[]>(base));
   }
   useEffect(() => {
     load();
+    api.get<any>(`${base}/tts/status`).then((s) => {
+      setTts(s);
+      setGenVoice(s.default_voice || "");
+    }).catch(() => setTts({ enabled: false, voices: [], default_voice: "" }));
   }, [tid]);
+
+  async function generate(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    setGenMsg("");
+    setGenBusy(true);
+    try {
+      const r = await api.post<any>(`${base}/generate`, {
+        name: genName,
+        text: genText,
+        kind: genKind,
+        voice: genVoice || undefined,
+      });
+      setGenMsg(`Generated "${r.name}" (${r.duration_sec}s) — now usable as ${r.sound_id}.`);
+      setGenName("");
+      setGenText("");
+      load();
+    } catch (e: any) {
+      setErr(typeof e.message === "string" ? e.message : JSON.stringify(e.message));
+    } finally {
+      setGenBusy(false);
+    }
+  }
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -82,10 +118,45 @@ export default function Prompts() {
     <div>
       <h2>Audio Prompts</h2>
       <p className="muted">
-        Upload your own greetings and announcements. Files are converted to the
-        format the phone system plays, and become available to IVRs, queues and
-        hold music as <code>custom/&lt;name&gt;</code>.
+        Upload your own greetings, or <b>generate them with AI</b> from typed
+        text. Prompts are converted to the format the phone system plays and
+        become available to the digital receptionist (IVR), flows, voicemail,
+        queues and hold music as <code>custom/&lt;name&gt;</code>.
       </p>
+
+      <div className="card">
+        <h3>✨ Generate with AI {tts && !tts.enabled && <span className="muted small">(not configured on this server)</span>}</h3>
+        <p className="muted small">
+          Type what the prompt should say and pick a voice; we synthesize the
+          audio and store it like any other prompt — immediately selectable as
+          an IVR greeting, a flow <code>say</code> step, a voicemail greeting, etc.
+        </p>
+        {genMsg && <div className="callout">{genMsg}</div>}
+        <form className="form" onSubmit={generate}>
+          <div className="row2">
+            <label>Name
+              <input value={genName} onChange={(e) => setGenName(e.target.value)}
+                placeholder="ivr-welcome" disabled={!tts?.enabled} required /></label>
+            <label>Type
+              <select value={genKind} onChange={(e) => setGenKind(e.target.value)} disabled={!tts?.enabled}>
+                {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select></label>
+            <label>Voice
+              <select value={genVoice} onChange={(e) => setGenVoice(e.target.value)} disabled={!tts?.enabled}>
+                {(tts?.voices || []).map((v) => <option key={v} value={v}>{v}</option>)}
+              </select></label>
+          </div>
+          <label>Script
+            <textarea className="logbox" style={{ minHeight: 90, width: "100%" }}
+              value={genText} onChange={(e) => setGenText(e.target.value)}
+              placeholder="Thank you for calling Acme. Press 1 for sales, 2 for support."
+              disabled={!tts?.enabled} maxLength={4000} /></label>
+          <button className="btn" disabled={!tts?.enabled || genBusy}>
+            {genBusy ? "Generating…" : "Generate prompt"}
+          </button>
+        </form>
+      </div>
+
       <div className="grid2">
         <div className="card">
           <h3>Upload a prompt</h3>

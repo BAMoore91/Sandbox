@@ -10,8 +10,9 @@ import re
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
-from .. import db
+from .. import db, tts
 from ..config import settings
 from ..deps import tenant_slug
 
@@ -53,30 +54,29 @@ async def list_prompts(ts: tuple[int, str] = Depends(tenant_slug)) -> list[dict]
     return [dict(r) for r in rows]
 
 
-@router.post("", status_code=201)
-async def upload_prompt(
-    ts: tuple[int, str] = Depends(tenant_slug),
-    name: str = Form(...),
-    kind: str = Form("greeting"),
-    description: str | None = Form(None),
-    file: UploadFile = File(...),
-) -> dict:
-    tid, slug = ts
+async def _store_prompt(*, tid: int, slug: str, name: str, kind: str,
+                        description: str | None, raw: bytes,
+                        original_name: str | None,
+                        source_ext: str = "audio") -> dict:
+    """Transcode raw audio bytes to Asterisk-ready WAV and upsert the prompt.
+
+    Shared by file upload and AI (TTS) generation — both end up as
+    custom/<slug>/<name>, usable anywhere a prompt is referenced (IVR greeting,
+    flow 'say', voicemail, MoH, …).
+    """
     name = name.strip().lower()
     if not _NAME_RE.match(name):
         raise HTTPException(422, "name must be 3-60 chars, lowercase letters/digits/hyphens")
     if kind not in VALID_KINDS:
         raise HTTPException(422, f"kind must be one of {sorted(VALID_KINDS)}")
-
-    raw = await file.read()
-    if len(raw) == 0:
-        raise HTTPException(422, "empty file")
+    if not raw:
+        raise HTTPException(422, "empty audio")
     if len(raw) > settings.max_prompt_bytes:
-        raise HTTPException(413, "file too large")
+        raise HTTPException(413, "audio too large")
 
     tenant_dir = _tenant_dir(slug)
     os.makedirs(tenant_dir, exist_ok=True)
-    tmp_in = os.path.join(tenant_dir, f".upload-{name}")
+    tmp_in = os.path.join(tenant_dir, f".in-{name}.{source_ext}")
     out_path = os.path.join(tenant_dir, f"{name}.wav")
     with open(tmp_in, "wb") as fh:
         fh.write(raw)
@@ -107,9 +107,67 @@ async def upload_prompt(
              original_name=EXCLUDED.original_name
            RETURNING id, name, sound_id, duration_sec""",
         tid, name, description, kind, sound_id, out_path,
-        duration, size, file.filename,
+        duration, size, original_name,
     )
     return dict(row)
+
+
+@router.post("", status_code=201)
+async def upload_prompt(
+    ts: tuple[int, str] = Depends(tenant_slug),
+    name: str = Form(...),
+    kind: str = Form("greeting"),
+    description: str | None = Form(None),
+    file: UploadFile = File(...),
+) -> dict:
+    tid, slug = ts
+    raw = await file.read()
+    return await _store_prompt(
+        tid=tid, slug=slug, name=name, kind=kind, description=description,
+        raw=raw, original_name=file.filename, source_ext="audio")
+
+
+class GenerateIn(BaseModel):
+    name: str
+    text: str                        # what the prompt should say
+    kind: str = "greeting"
+    voice: str | None = None         # TTS voice; server default if omitted
+    description: str | None = None
+
+
+@router.get("/tts/status")
+async def tts_status(_: tuple[int, str] = Depends(tenant_slug)) -> dict:
+    """Whether AI prompt generation is available + the selectable voices."""
+    return {
+        "enabled": tts.enabled(),
+        "provider": settings.tts_provider or None,
+        "default_voice": settings.openai_tts_voice,
+        "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+    }
+
+
+@router.post("/generate", status_code=201)
+async def generate_prompt(body: GenerateIn,
+                          ts: tuple[int, str] = Depends(tenant_slug)) -> dict:
+    """Generate a spoken prompt from text via TTS and store it like any other
+    prompt, so it's immediately usable by the digital receptionist (IVR),
+    flow 'say' widgets, voicemail greetings, music-on-hold, etc."""
+    tid, slug = ts
+    if not tts.enabled():
+        raise HTTPException(400, "AI prompt generation is not configured on this server")
+    if not body.text.strip():
+        raise HTTPException(422, "text is required")
+    if len(body.text) > 4000:
+        raise HTTPException(422, "text too long (max 4000 chars)")
+    try:
+        audio = await tts.synthesize(body.text, body.voice)
+    except tts.TTSError as exc:
+        raise HTTPException(502, f"TTS failed: {exc}")
+    row = await _store_prompt(
+        tid=tid, slug=slug, name=body.name, kind=body.kind,
+        description=body.description or f"AI-generated: {body.text[:80]}",
+        raw=audio, original_name="tts.mp3", source_ext="mp3")
+    return {**row, "generated": True, "text": body.text}
 
 
 @router.get("/{prompt_id}/audio")

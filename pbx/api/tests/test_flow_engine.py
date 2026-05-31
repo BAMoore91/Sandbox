@@ -16,8 +16,8 @@ class MockChannel:
         self.digits = iter(digits or [])
         self.trace = []
 
-    async def say(self, text):
-        self.trace.append(("say", text))
+    async def say(self, text, prompt=None):
+        self.trace.append(("say", text, prompt))
 
     async def gather(self, text, num_digits, timeout):
         self.trace.append(("gather", text))
@@ -56,7 +56,7 @@ def test_say_then_hangup():
         "s": {"type": "say", "text": "hello", "next": "h"},
         "h": {"type": "hangup"}}})
     assert res["path"] == ["s", "h"]
-    assert ("say", "hello") in ch.trace
+    assert ("say", "hello", None) in ch.trace
     assert ch.trace[-1] == ("hangup",)
 
 

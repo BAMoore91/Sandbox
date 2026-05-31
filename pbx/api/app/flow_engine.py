@@ -68,7 +68,7 @@ def _dig(obj: Any, path: str) -> Any:
 class FlowChannel(Protocol):
     """Media/telephony actions the engine drives. Implemented by ARI in prod."""
 
-    async def say(self, text: str) -> None: ...
+    async def say(self, text: str, prompt: str | None = None) -> None: ...
     async def gather(self, text: str, num_digits: int, timeout: int) -> str: ...
     async def record(self, max_seconds: int) -> dict: ...
     async def dial(self, dest_value: str, timeout: int) -> str: ...
@@ -175,7 +175,12 @@ class FlowRunner:
     async def _exec(self, w: dict) -> str | None:
         t = w.get("type")
         if t == "say":
-            await self.channel.say(render_template(w.get("text", ""), self.variables))
+            # A say widget can either speak `text` (TTS at call time) or play a
+            # pre-generated/uploaded prompt by its sound_id (`prompt`), e.g. an
+            # AI-generated greeting from the Prompts page.
+            await self.channel.say(
+                render_template(w.get("text", ""), self.variables),
+                prompt=w.get("prompt"))
             return w.get("next")
         if t == "gather":
             digits = await self.channel.gather(

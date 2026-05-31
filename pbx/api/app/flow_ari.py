@@ -47,12 +47,12 @@ class AriFlowChannel:
         async with httpx.AsyncClient(timeout=20) as c:
             return await c.get(f"{self._base}{path}", auth=_auth(), **kw)
 
-    async def say(self, text: str) -> None:
-        # Uses Asterisk TTS via the 'sound:'/'tts:' — here we play text through
-        # the built-in say via channels/{id}/play with a TTS engine if present;
-        # falls back to nothing if no TTS. (Prompts can also be pre-rendered.)
-        await self._post(f"/channels/{self.id}/play",
-                         params={"media": f"sound:tts/{_slugify(text)}"})
+    async def say(self, text: str, prompt: str | None = None) -> None:
+        # Prefer a pre-generated/uploaded prompt (sound_id like
+        # custom/<slug>/<name>, e.g. an AI-generated greeting). Otherwise fall
+        # back to a per-text rendered sound name.
+        media = f"sound:{prompt}" if prompt else f"sound:tts/{_slugify(text)}"
+        await self._post(f"/channels/{self.id}/play", params={"media": media})
         await asyncio.sleep(0.2)
 
     async def gather(self, text: str, num_digits: int, timeout: int) -> str:

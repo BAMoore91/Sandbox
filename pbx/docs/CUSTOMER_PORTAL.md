@@ -273,6 +273,26 @@ extension numbers never collide between companies.
 Names must be lowercase dns-safe slugs (`a-z 0-9 -`). Re-uploading the same
 name replaces the file. Deleting removes both the DB row and the file.
 
+### Generating prompts with AI (text-to-speech)
+
+Instead of recording/uploading audio, customers can **type the script and let
+AI speak it**. On the **Prompts** page, "✨ Generate with AI" takes a name, a
+voice, and the text; the API (`POST …/prompts/generate`) sends the text to a
+text-to-speech engine, gets back spoken audio, and runs it through the **exact
+same transcode-and-store pipeline as an upload** (`_store_prompt`). So an
+AI-generated prompt becomes a normal `custom/<slug>/<name>` sound — immediately
+usable **anywhere a prompt is referenced**: the digital receptionist (IVR)
+greeting, a flow `say` widget (set its `prompt` to the sound id), voicemail
+greetings, queue announcements, and music on hold.
+
+> Note on Whisper vs. TTS: *Whisper* is speech-to-**text** (used by flow
+> `record` transcription, `TRANSCRIPTION_PROVIDER`). Generating a prompt from
+> typed text is the reverse — **text-to-speech** — configured separately with
+> `TTS_PROVIDER` (e.g. OpenAI's speech API; voices alloy/echo/fable/onyx/nova/
+> shimmer). `GET …/prompts/tts/status` reports whether it's enabled and lists
+> the voices; with no provider configured the generate button is disabled and
+> uploads still work.
+
 ## Controlling the call flow
 
 All routing objects share one **destination** model — a `(type, value)` pair —

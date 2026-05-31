@@ -54,6 +54,7 @@ call logs — billed per subscription plan.
 | Auto phone provisioning | ✅ Yealink/Grandstream config-by-MAC, token-guarded |
 | BLF / programmable keys | ✅ per-extension BLF/speed-dial keys + dialplan hints |
 | Flows (Studio-style) | ✅ say/gather/record, GET/POST webhooks, branch, route, transcription |
+| AI prompt generation | ✅ text-to-speech prompts (TTS) usable by IVR, flows, voicemail, MoH |
 
 ## Quick start
 

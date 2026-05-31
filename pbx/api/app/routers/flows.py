@@ -122,8 +122,8 @@ async def test_run(body: TestIn, tenant_id: int = Depends(tenant_scope)) -> dict
     digits_iter = iter(body.digits)
 
     class MockChannel:
-        async def say(self, text):
-            trace.append({"action": "say", "text": text})
+        async def say(self, text, prompt=None):
+            trace.append({"action": "say", "text": text, "prompt": prompt})
 
         async def gather(self, text, num_digits, timeout):
             if text:

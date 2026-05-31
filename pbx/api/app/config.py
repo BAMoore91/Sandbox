@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     transcription_provider: str = ""           # "openai" | ""
     openai_api_key: str = ""
     openai_transcribe_model: str = "whisper-1"
+    # Text-to-speech for AI-generated prompts (digital receptionist, intros,
+    # voicemail greetings, MoH, flow 'say', …). Empty disables generation.
+    tts_provider: str = ""                      # "openai" | ""
+    openai_tts_model: str = "gpt-4o-mini-tts"
+    openai_tts_voice: str = "alloy"             # default voice if none chosen
 
     # --- Data retention sweeper ---
     # Set to 0 to disable the in-process scheduler (e.g. if you run the purge
