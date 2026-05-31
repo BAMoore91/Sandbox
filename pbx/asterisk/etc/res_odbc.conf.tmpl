@@ -1,0 +1,15 @@
+; ============================================================================
+;  res_odbc.conf — ODBC connection context "openpbx" used by realtime,
+;  func_odbc and cdr_adaptive_odbc. Rendered from .env by the entrypoint.
+; ============================================================================
+[openpbx]
+enabled         => yes
+dsn             => openpbx
+username        => ${POSTGRES_USER}
+password        => ${POSTGRES_PASSWORD}
+pre-connect     => yes
+sanitysql       => select 1
+max_connections => 20
+; Keep connections healthy for long-lived realtime lookups
+connect_timeout => 10
+negative_connection_cache => 5

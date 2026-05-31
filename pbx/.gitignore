@@ -1,0 +1,16 @@
+# Secrets / local config
+.env
+
+# Node
+web/node_modules/
+web/dist/
+
+# Python
+api/__pycache__/
+api/app/__pycache__/
+api/app/**/__pycache__/
+*.pyc
+
+# Asterisk runtime (if ever run outside docker)
+*.log
+web/*.tsbuildinfo

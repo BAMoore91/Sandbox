@@ -1,0 +1,15 @@
+; Rendered to /etc/odbc.ini by the entrypoint. Defines the "openpbx" DSN
+; that res_odbc.conf references, pointing at the Postgres container.
+[openpbx]
+Description         = OpenPBX PostgreSQL
+Driver              = PostgreSQL
+Servername          = ${POSTGRES_HOST}
+Port                = ${POSTGRES_PORT}
+Database            = ${POSTGRES_DB}
+Username            = ${POSTGRES_USER}
+Password            = ${POSTGRES_PASSWORD}
+Protocol            = 7.4
+ReadOnly            = No
+RowVersioning       = No
+ShowSystemTables    = No
+ConnSettings        =

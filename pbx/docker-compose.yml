@@ -1,0 +1,118 @@
+# ============================================================================
+#  OpenPBX — multi-tenant self-hosted PBX (Asterisk + Twilio SIP trunking)
+# ============================================================================
+# Bring the whole stack up with:   docker compose up -d
+# ----------------------------------------------------------------------------
+
+name: openpbx
+
+services:
+  # --------------------------------------------------------------------------
+  # PostgreSQL — single source of truth: PJSIP realtime + tenant/feature data
+  # --------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migrations run in lexical order on first init of an empty volume.
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      pbxnet:
+        ipv4_address: 172.20.0.5
+
+  # --------------------------------------------------------------------------
+  # Asterisk — SIP/media engine. PJSIP endpoints/trunks loaded from Postgres.
+  # Uses host networking-friendly explicit port maps; RTP range must be open.
+  # --------------------------------------------------------------------------
+  asterisk:
+    build: ./asterisk
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "${SIP_UDP_PORT}:5060/udp"
+      - "${SIP_TCP_PORT}:5060/tcp"
+      - "${SIP_TLS_PORT}:5061/tcp"
+      - "${WSS_PORT}:8089/tcp"        # secure websocket for WebRTC softphone
+      - "8088:8088/tcp"               # internal HTTP (ARI/AMI) — keep firewalled
+      - "${RTP_START}-${RTP_END}:${RTP_START}-${RTP_END}/udp"
+    volumes:
+      # Configs are mounted as TEMPLATES; the entrypoint renders env vars into
+      # the real /etc/asterisk on boot (and leaves dialplan files untouched).
+      - ./asterisk/etc:/etc/asterisk-templates:ro
+      - asterisk_keys:/etc/asterisk/keys
+      - asterisk_spool:/var/spool/asterisk     # voicemail, recordings
+      - asterisk_logs:/var/log/asterisk
+    networks:
+      pbxnet:
+        ipv4_address: 172.20.0.10
+
+  # --------------------------------------------------------------------------
+  # Management API — FastAPI. Tenant provisioning + ARI/AMI control plane.
+  # --------------------------------------------------------------------------
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      ASTERISK_ARI_URL: http://asterisk:8088/ari
+      ASTERISK_AMI_HOST: asterisk
+      ASTERISK_AMI_PORT: 5038
+    networks:
+      pbxnet:
+        ipv4_address: 172.20.0.20
+
+  # --------------------------------------------------------------------------
+  # Web — React admin portal + WebRTC softphone (served as static build).
+  # --------------------------------------------------------------------------
+  web:
+    build: ./web
+    restart: unless-stopped
+    networks:
+      pbxnet:
+        ipv4_address: 172.20.0.30
+
+  # --------------------------------------------------------------------------
+  # Reverse proxy — terminates TLS, routes /api to API, / to web, /ws to ARI.
+  # --------------------------------------------------------------------------
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [api, web]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - asterisk_keys:/etc/nginx/keys:ro
+    networks:
+      pbxnet:
+        ipv4_address: 172.20.0.40
+
+volumes:
+  pgdata:
+  asterisk_keys:
+  asterisk_spool:
+  asterisk_logs:
+
+networks:
+  pbxnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

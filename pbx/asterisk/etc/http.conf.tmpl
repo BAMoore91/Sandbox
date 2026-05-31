@@ -1,0 +1,15 @@
+; ============================================================================
+;  http.conf — built-in HTTP server. Powers ARI, and the secure WebSocket
+;  (wss) used by the WebRTC softphone. Rendered from .env by the entrypoint.
+; ============================================================================
+[general]
+enabled = yes
+bindaddr = 0.0.0.0
+bindport = 8088
+; Secure websocket on 8089 (uses the same TLS cert as the SIP TLS transport)
+tlsenable = yes
+tlsbindaddr = 0.0.0.0:8089
+tlscertfile = ${TLS_CERT_FILE}
+tlsprivatekey = ${TLS_KEY_FILE}
+; WebSocket write timeout (ms) — bump for slow mobile networks
+websocket_write_timeout = 1000

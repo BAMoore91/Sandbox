@@ -1,0 +1,83 @@
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { useAuth } from "./auth";
+import Login from "./components/Login";
+import Layout from "./components/Layout";
+import Tenants from "./components/Tenants";
+import Extensions from "./components/Extensions";
+import Trunks from "./components/Trunks";
+import Dids from "./components/Dids";
+import Cdr from "./components/Cdr";
+import Dashboard from "./components/Dashboard";
+import Softphone from "./components/softphone/Softphone";
+
+function HomeRedirect() {
+  const { me } = useAuth();
+  if (!me) return <Navigate to="/login" replace />;
+  if (me.role === "superadmin") return <Navigate to="/tenants" replace />;
+  return <Navigate to={`/t/${me.tenant_id}/dashboard`} replace />;
+}
+
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { me, loading } = useAuth();
+  if (loading) return <div className="center">Loading…</div>;
+  if (!me) return <Navigate to="/login" replace />;
+  return children;
+}
+
+// Guard cross-tenant URL tampering for non-superadmins.
+function TenantGuard({ children }: { children: JSX.Element }) {
+  const { tid } = useParams();
+  const { me } = useAuth();
+  if (me && me.role !== "superadmin" && String(me.tenant_id) !== tid)
+    return <Navigate to="/" replace />;
+  return children;
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<HomeRedirect />} />
+
+      <Route
+        path="/tenants"
+        element={
+          <RequireAuth>
+            <Layout>
+              <Tenants />
+            </Layout>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/t/:tid/*"
+        element={
+          <RequireAuth>
+            <TenantGuard>
+              <Layout>
+                <TenantRoutes />
+              </Layout>
+            </TenantGuard>
+          </RequireAuth>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function TenantRoutes() {
+  return (
+    <Routes>
+      <Route path="dashboard" element={<Dashboard />} />
+      <Route path="extensions" element={<Extensions />} />
+      <Route path="trunks" element={<Trunks />} />
+      <Route path="dids" element={<Dids />} />
+      <Route path="cdr" element={<Cdr />} />
+      <Route path="softphone" element={<Softphone />} />
+      <Route path="*" element={<Navigate to="dashboard" replace />} />
+    </Routes>
+  );
+}

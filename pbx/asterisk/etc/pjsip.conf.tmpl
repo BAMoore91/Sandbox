@@ -1,0 +1,52 @@
+; ============================================================================
+;  pjsip.conf — global settings + transports ONLY.
+;  Endpoints, auths, AORs, identifies and registrations all come from the
+;  realtime database (see sorcery.conf / extconfig.conf).
+;  Rendered from .env by the entrypoint (PUBLIC_IP, LOCAL_NET, TLS paths...).
+; ============================================================================
+[global]
+type = global
+endpoint_identifier_order = ip,username,anonymous
+max_forwards = 70
+user_agent = OpenPBX
+default_realm = ${PUBLIC_HOSTNAME}
+; Allow anonymous only into the trunk context (Twilio is IP-identified anyway)
+default_from_user = openpbx
+
+; ---- UDP (standard SIP for trunks / desk phones) --------------------------
+[transport-udp]
+type = transport
+protocol = udp
+bind = 0.0.0.0:5060
+external_media_address = ${PUBLIC_IP}
+external_signaling_address = ${PUBLIC_IP}
+local_net = ${LOCAL_NET}
+
+; ---- TCP ------------------------------------------------------------------
+[transport-tcp]
+type = transport
+protocol = tcp
+bind = 0.0.0.0:5060
+external_media_address = ${PUBLIC_IP}
+external_signaling_address = ${PUBLIC_IP}
+local_net = ${LOCAL_NET}
+
+; ---- TLS (secure SIP / secure trunking) -----------------------------------
+[transport-tls]
+type = transport
+protocol = tls
+bind = 0.0.0.0:5061
+cert_file = ${TLS_CERT_FILE}
+priv_key_file = ${TLS_KEY_FILE}
+method = tlsv1_2
+external_media_address = ${PUBLIC_IP}
+external_signaling_address = ${PUBLIC_IP}
+local_net = ${LOCAL_NET}
+
+; ---- WSS (WebRTC softphone in the browser) --------------------------------
+; The TLS for the websocket is provided by the built-in HTTP server
+; (see http.conf). This transport just advertises wss to PJSIP.
+[transport-wss]
+type = transport
+protocol = wss
+bind = 0.0.0.0:8089
