@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../auth";
+import { api } from "../api";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { me, logout } = useAuth();
@@ -42,6 +43,19 @@ export default function Layout({ children }: { children: ReactNode }) {
       ]
     : [];
 
+  // When a global admin is managing a specific company, show which one.
+  const [tenantName, setTenantName] = useState<string | null>(null);
+  useEffect(() => {
+    if (tid && me?.role === "superadmin") {
+      api.get<any>(`/api/tenants/${tid}`)
+        .then((t) => setTenantName(t.name))
+        .catch(() => setTenantName(null));
+    } else {
+      setTenantName(null);
+    }
+  }, [tid, me]);
+  const impersonating = !!(tid && me?.role === "superadmin");
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -74,7 +88,21 @@ export default function Layout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="content">{children}</main>
+      <main className="content">
+        {impersonating && (
+          <div className="managing-bar">
+            <span>
+              🛠 Managing company:{" "}
+              <b>{tenantName || `#${tid}`}</b>{" "}
+              <span className="muted small">as global admin</span>
+            </span>
+            <Link className="btn small ghost" to="/tenants">
+              ← Back to all companies
+            </Link>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

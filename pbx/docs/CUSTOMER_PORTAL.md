@@ -379,4 +379,27 @@ lets an admin:
   click-to-call dialer, softphone credentials, and their own call history.
   The admin console and other tenants are blocked at the router and the API.
 - **admin** → the full company console (incl. Users & Roles).
-- **superadmin** → also the platform **Companies** screen.
+- **superadmin** → also the platform **Companies** and **Platform Billing**
+  screens.
+
+### Global admin managing individual sites
+
+The platform super-admin (global admin) can manage **any** company directly:
+
+- The **Companies** screen lists every tenant with inline controls —
+  **change plan**, **suspend / activate**, and **delete** (slug-confirmed) —
+  plus a **Manage →** link into that company's full console.
+- Clicking *Manage* opens the normal per-company console at `/t/<id>/…`; the
+  super-admin's token passes `tenant_scope` for any tenant, so every config
+  surface (extensions, flows, trunks, Twilio, billing, …) works exactly as it
+  does for that company's own admin. A **"🛠 Managing company: <name>"** bar is
+  shown the whole time with a one-click **← Back to all companies**.
+- Lifecycle endpoints are **super-admin-only**: `POST /tenants/{id}/suspend`,
+  `POST /tenants/{id}/activate`, `DELETE /tenants/{id}`, and creating companies.
+  Suspending sets `status='suspended'`, which the inbound DID lookup filters
+  out (`status='active'`), so a suspended company stops taking calls while its
+  configuration is preserved.
+
+Tenant isolation is unaffected: a tenant **admin** still gets `403` on any other
+company and on the super-admin-only lifecycle actions — only the global admin
+crosses tenants.

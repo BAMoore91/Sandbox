@@ -102,3 +102,11 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .qhead { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .agents { list-style: none; padding-left: 0; margin: 6px 0; }
 .agents li { display: flex; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+
+/* ---- Global-admin "managing company" context bar ---- */
+.managing-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(56,189,248,.12); border: 1px solid var(--accent2);
+  color: var(--ink); padding: 8px 14px; border-radius: 10px; margin-bottom: 18px;
+  flex-wrap: wrap;
+}

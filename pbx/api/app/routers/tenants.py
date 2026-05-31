@@ -134,8 +134,20 @@ async def update_tenant(body: TenantPatch,
 @router.post("/tenants/{tenant_id}/suspend")
 async def suspend_tenant(tenant_id: int,
                          _: Principal = Depends(require_role("superadmin"))) -> dict:
-    await db.execute("UPDATE tenants SET status='suspended' WHERE id=$1", tenant_id)
+    """Suspend a company: blocks new inbound (DID lookup filters active) and
+    marks it suspended in the console. Existing config is preserved."""
+    await db.execute("UPDATE tenants SET status='suspended', updated_at=now() WHERE id=$1",
+                     tenant_id)
     return {"status": "suspended"}
+
+
+@router.post("/tenants/{tenant_id}/activate")
+async def activate_tenant(tenant_id: int,
+                          _: Principal = Depends(require_role("superadmin"))) -> dict:
+    """Re-activate a suspended/trial company."""
+    await db.execute("UPDATE tenants SET status='active', updated_at=now() WHERE id=$1",
+                     tenant_id)
+    return {"status": "active"}
 
 
 @router.delete("/tenants/{tenant_id}", status_code=204)
