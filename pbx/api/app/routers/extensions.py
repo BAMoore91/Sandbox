@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .. import db
-from ..asterisk import pjsip_reload
+from ..asterisk import dialplan_reload, pjsip_reload
 from ..deps import tenant_slug
+from ..dialplan_gen import regenerate_tenant
 from ..provisioning import deprovision_extension, provision_extension
 
 router = APIRouter(prefix="/api/tenants/{tenant_id}/extensions", tags=["extensions"])
@@ -94,6 +95,9 @@ async def create_extension(body: ExtensionIn,
                        ON CONFLICT (context, mailbox) DO UPDATE SET password = EXCLUDED.password""",
                     slug, body.extension, body.vm_pin, body.display_name, body.email, tid,
                 )
+    # Refresh this tenant's BLF hint context so the new extension is monitorable.
+    await regenerate_tenant(slug)
+    await dialplan_reload()
     return {"extension": body.extension, "endpoint_id": endpoint_id,
             "sip_username": endpoint_id, "sip_password": sip_password,
             "wss_uri": f"wss://{slug}/ws"}
@@ -151,4 +155,9 @@ async def delete_extension(extension: str,
                 "DELETE FROM extensions WHERE tenant_id=$1 AND extension=$2", tid, extension)
             await con.execute(
                 "DELETE FROM voicemail WHERE context=$1 AND mailbox=$2", slug, extension)
+            # drop any BLF keys this extension owned
+            await con.execute(
+                "DELETE FROM blf_keys WHERE tenant_id=$1 AND extension=$2", tid, extension)
+    await regenerate_tenant(slug)
     await pjsip_reload()
+    await dialplan_reload()

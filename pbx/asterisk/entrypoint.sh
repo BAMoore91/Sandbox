@@ -32,6 +32,14 @@ for f in "$TPL"/*; do
   esac
 done
 
+# ---- Dialplan include dir (generated per-tenant BLF hint contexts) --------
+# Ensure it exists with a placeholder so #include "dialplan/tenant-*.conf"
+# never errors on a fresh volume.
+mkdir -p /etc/asterisk/dialplan
+[[ -f /etc/asterisk/dialplan/.keep ]] || echo "; tenant dialplan files land here" \
+    > /etc/asterisk/dialplan/.keep
+chown -R asterisk:asterisk /etc/asterisk/dialplan || true
+
 # ---- TLS cert (self-signed fallback) --------------------------------------
 mkdir -p /etc/asterisk/keys
 if [[ ! -f "${TLS_CERT_FILE}" || ! -f "${TLS_KEY_FILE}" ]]; then

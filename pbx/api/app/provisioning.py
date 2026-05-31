@@ -43,19 +43,24 @@ async def provision_extension(
            ON CONFLICT (id) DO UPDATE SET password = EXCLUDED.password""",
         endpoint_id, sip_password, tenant_id,
     )
+    # Endpoints live in a per-tenant context (tenant-<slug>) that includes
+    # from-internal and carries this tenant's BLF hints. allow_subscribe=yes so
+    # phones can SUBSCRIBE to those hints for busy-lamp-field presence.
+    context = f"tenant-{slug}"
     await con.execute(
         """INSERT INTO ps_endpoints
              (id, transport, aors, auth, context, disallow, allow, callerid, mailboxes,
               webrtc, use_avpf, media_encryption, dtls_auto_generate_cert, rtcp_mux,
-              ice_support, rtp_symmetric, force_rport, rewrite_contact, set_var,
-              accountcode, tenant_id)
+              ice_support, rtp_symmetric, force_rport, rewrite_contact, allow_subscribe,
+              set_var, accountcode, tenant_id)
            VALUES
-             ($1, $2, $1, $1, 'from-internal', 'all', $3, $4, $5,
-              $6, $6, $7, $6, $6, $6, 'yes', 'yes', 'yes', $8, $9, $10)
+             ($1, $2, $1, $1, $11, 'all', $3, $4, $5,
+              $6, $6, $7, $6, $6, $6, 'yes', 'yes', 'yes', 'yes', $8, $9, $10)
            ON CONFLICT (id) DO UPDATE SET
               transport = EXCLUDED.transport, allow = EXCLUDED.allow,
               callerid = EXCLUDED.callerid, webrtc = EXCLUDED.webrtc,
               use_avpf = EXCLUDED.use_avpf, media_encryption = EXCLUDED.media_encryption,
+              context = EXCLUDED.context, allow_subscribe = EXCLUDED.allow_subscribe,
               set_var = EXCLUDED.set_var""",
         endpoint_id, transport,
         "opus,ulaw,alaw" if webrtc else "ulaw,alaw,opus",
@@ -63,7 +68,7 @@ async def provision_extension(
         "yes" if webrtc else "no",
         "dtls" if webrtc else "no",
         f"TENANT={slug},MYEXTEN={extension}",
-        slug, tenant_id,
+        slug, tenant_id, context,
     )
     return endpoint_id
 

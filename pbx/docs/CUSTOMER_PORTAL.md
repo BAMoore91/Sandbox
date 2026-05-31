@@ -26,6 +26,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Notifications** | per-extension missed-call/voicemail email & SMS alerts + outbox | `/tenants/{id}/notifications` |
 | **Billing & Usage** | metered usage + monthly invoice, CSV export, finalize, Stripe charge, auto-bill | `/tenants/{id}/billing` |
 | **Wallboard** | live calls, queue stats, agent presence (SSE) | `/tenants/{id}/wallboard` |
+| **Phones** | register desk phones by MAC, auto-provision, BLF keys | `/tenants/{id}/devices` |
 | **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
 
@@ -177,6 +178,37 @@ per-queue waiting/handled/abandoned counts, and agent presence
 back to polling if the stream drops. Because EventSource can't set headers, the
 stream authenticates via an `access_token` query param, validated inline with
 the same membership rules as the rest of the tenant API.
+
+## Auto phone provisioning & BLF keys
+
+Physical desk phones are zero-touch provisioned by MAC:
+
+1. **Register** a phone under **Phones**: MAC, vendor (Yealink/Grandstream),
+   the extension it should log in as, and an optional per-device token.
+2. Point the phone's provisioning server at
+   `https://<host>/api/provision/` (DHCP option 66, or the vendor's RPS/redirect
+   service). On boot the phone GETs its config:
+   - Yealink → `/api/provision/<mac>.cfg`
+   - Grandstream → `/api/provision/cfg<mac>.xml`
+3. The API returns a rendered config containing the SIP account (auth name,
+   password, server, transport) **and** the phone's programmable keys, and
+   records `last_seen`. The endpoint is unauthenticated (phones can't log in)
+   but guarded by the optional device token in the URL — serve it over TLS on
+   the network the phones live on.
+
+**BLF / programmable keys** are set per extension under Phones → *Keys*
+(`PUT /tenants/{id}/extensions/{ext}/keys`): BLF (busy-lamp presence),
+speed-dial, or line keys. They render into each vendor's key parameters
+(`linekey.N.*` for Yealink, VPK `Pxxx` for Grandstream).
+
+For BLF presence to work, monitored extensions need dialplan **hints**. OpenPBX
+generates a per-tenant context `tenant-<slug>` (in the shared dialplan volume,
+`#include`d by `extensions.conf`) that `include`s `from-internal` and declares
+`exten => <n>,hint,PJSIP/<slug>-<n>` for every extension; endpoints live in
+that context with `allow_subscribe=yes`. The file is regenerated and
+`dialplan reload`ed automatically whenever an extension is added or removed, so
+BLF keys light up without manual dialplan editing. Hints are tenant-scoped, so
+extension numbers never collide between companies.
 
 ## Uploading prompts (how it works)
 

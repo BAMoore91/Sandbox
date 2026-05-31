@@ -60,6 +60,8 @@ services:
       - asterisk_sounds:/var/lib/asterisk/sounds/custom
       # Call recordings: Asterisk (MixMonitor) writes, API reads for playback.
       - asterisk_monitor:/var/spool/asterisk/monitor
+      # Generated per-tenant dialplan (BLF hints): API writes, Asterisk includes.
+      - asterisk_dialplan:/etc/asterisk/dialplan
     networks:
       pbxnet:
         ipv4_address: 172.20.0.10
@@ -80,12 +82,15 @@ services:
       ASTERISK_AMI_PORT: 5038
       SOUNDS_DIR: /sounds
       RECORDINGS_DIR: /recordings
+      DIALPLAN_DIR: /dialplan
     volumes:
       # Same volume Asterisk reads prompts from (custom/<slug>/<name>).
       - asterisk_sounds:/sounds
       # Recordings Asterisk wrote: read for playback, and writable so the
       # retention sweeper can delete files past their tenant's window.
       - asterisk_monitor:/recordings
+      # Generated per-tenant dialplan (BLF hints): API writes here.
+      - asterisk_dialplan:/dialplan
     networks:
       pbxnet:
         ipv4_address: 172.20.0.20
@@ -124,6 +129,7 @@ volumes:
   asterisk_logs:
   asterisk_sounds:
   asterisk_monitor:
+  asterisk_dialplan:
 
 networks:
   pbxnet:

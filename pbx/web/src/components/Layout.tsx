@@ -16,6 +16,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           ["Wallboard", `/t/${tid}/wallboard`],
           ["Users & Roles", `/t/${tid}/users`],
           ["Extensions", `/t/${tid}/extensions`],
+          ["Phones", `/t/${tid}/phones`],
           ["Auto-Attendant", `/t/${tid}/ivrs`],
           ["Ring Groups", `/t/${tid}/ring-groups`],
           ["Queues", `/t/${tid}/queues`],

@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Layout from "./components/Layout";
 import Tenants from "./components/Tenants";
 import Extensions from "./components/Extensions";
+import Phones from "./components/Phones";
 import Trunks from "./components/Trunks";
 import Dids from "./components/Dids";
 import Cdr from "./components/Cdr";
@@ -124,6 +125,7 @@ function TenantRoutes() {
       <Route path="wallboard" element={<Wallboard />} />
       <Route path="users" element={<Users />} />
       <Route path="extensions" element={<Extensions />} />
+      <Route path="phones" element={<Phones />} />
       <Route path="ivrs" element={<Ivrs />} />
       <Route path="ring-groups" element={<RingGroups />} />
       <Route path="queues" element={<Queues />} />

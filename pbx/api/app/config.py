@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     # cdr.recording / recordings.path store the path relative to this dir.
     recordings_dir: str = "/recordings"
 
+    # Shared volume where the API writes generated per-tenant dialplan
+    # (tenant-<slug>.conf with BLF hints) that Asterisk #includes.
+    dialplan_dir: str = "/dialplan"
+    # Base URL phones fetch provisioning config from (usually the proxy).
+    provision_base_url: str = ""
+    # SIP port advertised to provisioned desk phones (matches the UDP transport).
+    sip_udp_port: int = 5060
+
     # --- Data retention sweeper ---
     # Set to 0 to disable the in-process scheduler (e.g. if you run the purge
     # from an external cron hitting the admin "run now" endpoint instead).

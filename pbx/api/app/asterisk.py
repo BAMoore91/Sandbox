@@ -112,6 +112,10 @@ async def pjsip_reload() -> None:
     await ami_command("pjsip reload")
 
 
+async def dialplan_reload() -> None:
+    await ami_command("dialplan reload")
+
+
 async def ami_action(action: dict, terminator: str | None = None,
                      timeout: float = 5) -> list[dict]:
     """Run an AMI action and parse the reply into a list of event dicts.

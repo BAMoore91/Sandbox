@@ -51,6 +51,8 @@ call logs — billed per subscription plan.
 | Usage metering & billing | ✅ per-tenant invoices from CDR + plan, CSV export, platform run |
 | Payments | ✅ Stripe charging + monthly auto-finalize + webhook reconciliation |
 | Live wallboard | ✅ real-time calls/queues/agents via AMI (SSE stream) |
+| Auto phone provisioning | ✅ Yealink/Grandstream config-by-MAC, token-guarded |
+| BLF / programmable keys | ✅ per-extension BLF/speed-dial keys + dialplan hints |
 
 ## Quick start
 
