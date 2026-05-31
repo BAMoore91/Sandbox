@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     notifications_enabled: bool = True
     notify_poll_seconds: int = 15
     notify_max_attempts: int = 5
+    # Digest / rate-limiting: when this many or more due notifications target
+    # the same channel+recipient in one drain, they're coalesced into a single
+    # digest message instead of sent individually (avoids blasting on bursts).
+    notify_digest_threshold: int = 3
     # SMTP (email). If smtp_host is empty, email delivery is skipped.
     smtp_host: str = ""
     smtp_port: int = 587

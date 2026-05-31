@@ -92,17 +92,89 @@ async def _deliver_one(row) -> None:
             row["id"], attempts, str(exc)[:500], failed, str(backoff_min))
 
 
-async def deliver_pending(limit: int = 50) -> int:
-    """Deliver up to `limit` due notifications. Returns count attempted."""
+async def _mark_failed(ids: list[int], attempts_by_id: dict, exc: Exception) -> None:
+    """Apply retry/backoff to a set of rows that failed as a digest."""
+    for nid in ids:
+        attempts = attempts_by_id[nid] + 1
+        failed = attempts >= settings.notify_max_attempts
+        backoff_min = 2 ** min(attempts, 6)
+        await db.execute(
+            """UPDATE notifications
+               SET attempts=$2, last_error=$3,
+                   status = CASE WHEN $4 THEN 'failed' ELSE 'pending' END,
+                   next_attempt_at = now() + ($5 || ' minutes')::interval
+               WHERE id=$1""",
+            nid, attempts, str(exc)[:500], failed, str(backoff_min))
+
+
+def _digest_body(rows: list) -> tuple[str, str]:
+    """Build a single (subject, body) summarizing several queued events."""
+    n = len(rows)
+    missed = sum(1 for r in rows if r["event"] == "missed")
+    vm = sum(1 for r in rows if r["event"] == "voicemail")
+    ext = rows[0]["extension"]
+    parts = []
+    if missed:
+        parts.append(f"{missed} missed call{'s' if missed != 1 else ''}")
+    if vm:
+        parts.append(f"{vm} new voicemail{'s' if vm != 1 else ''}")
+    summary = " and ".join(parts) or f"{n} events"
+    subject = f"OpenPBX: {summary} for {ext}"
+    lines = [f"You have {summary} on extension {ext}:", ""]
+    for r in rows:
+        when = r["created_at"].strftime("%Y-%m-%d %H:%M")
+        caller = r["caller"] or "unknown"
+        label = "Voicemail" if r["event"] == "voicemail" else "Missed call"
+        lines.append(f"  • {when}  {label} from {caller}")
+    return subject, "\n".join(lines)
+
+
+async def deliver_pending(limit: int = 200) -> int:
+    """Deliver due notifications, coalescing bursts into digests.
+
+    Rows due for delivery are grouped by (channel, recipient). A group at or
+    above ``notify_digest_threshold`` is sent as one digest message and all its
+    rows marked sent together; smaller groups are sent individually. Returns
+    the number of rows processed.
+    """
     rows = await db.fetch(
-        """SELECT id, channel, recipient, subject, body, attempts
+        """SELECT id, channel, recipient, subject, body, attempts, event,
+                  extension, caller, created_at
            FROM notifications
            WHERE status='pending' AND next_attempt_at <= now()
            ORDER BY created_at LIMIT $1""",
         limit)
-    for row in rows:
-        await _deliver_one(row)
-    return len(rows)
+    if not rows:
+        return 0
+
+    groups: dict[tuple[str, str], list] = {}
+    for r in rows:
+        groups.setdefault((r["channel"], r["recipient"]), []).append(r)
+
+    processed = 0
+    for (channel, recipient), grp in groups.items():
+        processed += len(grp)
+        if len(grp) < settings.notify_digest_threshold:
+            for row in grp:
+                await _deliver_one(row)
+            continue
+        # Coalesce into a single digest message.
+        ids = [r["id"] for r in grp]
+        attempts_by_id = {r["id"]: r["attempts"] for r in grp}
+        subject, body = _digest_body(grp)
+        try:
+            if channel == "email":
+                await _send_email(recipient, subject, body)
+            elif channel == "sms":
+                await _send_sms(recipient, body)
+            else:
+                raise RuntimeError(f"unknown channel {channel}")
+            await db.execute(
+                "UPDATE notifications SET status='sent', sent_at=now(), "
+                "attempts=attempts+1 WHERE id = ANY($1::bigint[])", ids)
+        except Exception as exc:
+            await _mark_failed(ids, attempts_by_id, exc)
+    return processed
 
 
 async def notification_worker(stop: asyncio.Event) -> None:
@@ -117,7 +189,7 @@ async def notification_worker(stop: asyncio.Event) -> None:
             async with db.advisory_lock(NOTIFY_LOCK_KEY) as acquired:
                 if acquired:
                     # keep draining while there's a full batch to send
-                    while (await deliver_pending()) >= 50 and not stop.is_set():
+                    while (await deliver_pending()) >= 200 and not stop.is_set():
                         pass
         except Exception:
             pass  # never let the loop die

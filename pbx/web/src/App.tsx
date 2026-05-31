@@ -20,6 +20,8 @@ import Users from "./components/Users";
 import Recordings from "./components/Recordings";
 import Settings from "./components/Settings";
 import Notifications from "./components/Notifications";
+import Billing from "./components/Billing";
+import PlatformBilling from "./components/PlatformBilling";
 
 function HomeRedirect() {
   const { me } = useAuth();
@@ -86,6 +88,17 @@ export default function App() {
       />
 
       <Route
+        path="/platform-billing"
+        element={
+          <RequireAuth>
+            <Layout>
+              <PlatformBilling />
+            </Layout>
+          </RequireAuth>
+        }
+      />
+
+      <Route
         path="/t/:tid/*"
         element={
           <RequireAuth>
@@ -120,6 +133,7 @@ function TenantRoutes() {
       <Route path="cdr" element={<Cdr />} />
       <Route path="recordings" element={<Recordings />} />
       <Route path="notifications" element={<Notifications />} />
+      <Route path="billing" element={<Billing />} />
       <Route path="settings" element={<Settings />} />
       <Route path="softphone" element={<Softphone />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />

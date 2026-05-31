@@ -24,6 +24,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
 | **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
 | **Notifications** | per-extension missed-call/voicemail email & SMS alerts + outbox | `/tenants/{id}/notifications` |
+| **Billing & Usage** | metered usage + monthly invoice, CSV export, finalize | `/tenants/{id}/billing` |
 | **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
 
@@ -91,7 +92,12 @@ How it flows:
    Twilio REST API, with capped exponential-backoff retries
    (`NOTIFY_MAX_ATTEMPTS`). A failed/un-configured channel is retried and
    surfaced with its last error in the outbox; the other channel is unaffected.
-3. **Multi-replica safe.** The worker holds a Postgres advisory lock, so only
+3. **Digest / rate-limiting.** Within one drain, due alerts are grouped by
+   channel + recipient; any group of `NOTIFY_DIGEST_THRESHOLD`+ is coalesced
+   into a single digest message (e.g. "4 missed calls for 1001" listing each)
+   instead of sending one message per event — so a burst never blasts a phone
+   or inbox. Smaller groups send individually.
+4. **Multi-replica safe.** The worker holds a Postgres advisory lock, so only
    one API replica delivers at a time (others still enqueue).
 
 Configure SMTP and/or Twilio in `.env` (`SMTP_*`, `TWILIO_*`). Leaving a
@@ -105,6 +111,34 @@ proxy returns 404 for `/api/internal/`.
 
 Admins can fire a **Test** from the Notifications page to queue and immediately
 attempt a sample alert for any extension.
+
+## Usage metering & billing
+
+Invoices are computed on demand from CDR + the tenant's plan — no separate
+metering pipeline to drift out of sync. A plan carries a monthly base fee, an
+optional per-extension fee, per-minute outbound/inbound rates, and a pool of
+included minutes. For a period an invoice is:
+
+```
+  base monthly fee
++ per-extension fee × current extensions
++ (outbound minutes − included pool) × outbound rate
++ inbound minutes × inbound rate          (if the plan meters inbound)
+```
+
+Each call's minutes are its `billsec` rounded **up** to whole minutes (standard
+telecom rounding); internal calls are free.
+
+- **Admins** (`/tenants/{id}/billing`): pick a month, see metered usage and the
+  itemized invoice, **download CSV**, or **finalize** a snapshot into the
+  `invoices` table (idempotent per period).
+- **Super-admins** (`/api/billing/run`, Platform Billing page): a billing run
+  across every active tenant for a month, with a grand total and CSV export for
+  handing to your accounting/payment system.
+
+Endpoints: `GET …/billing/usage`, `GET …/billing/invoice[?format=csv]`,
+`POST …/billing/invoice/finalize`, `GET …/billing/invoices`,
+`GET /api/billing/run[?format=csv]` (super-admin).
 
 ## Uploading prompts (how it works)
 

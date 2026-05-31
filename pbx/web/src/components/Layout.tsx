@@ -26,6 +26,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           ["Call Logs", `/t/${tid}/cdr`],
           ["Recordings", `/t/${tid}/recordings`],
           ["Notifications", `/t/${tid}/notifications`],
+          ["Billing & Usage", `/t/${tid}/billing`],
           ["Settings", `/t/${tid}/settings`],
           ["Softphone", `/t/${tid}/softphone`],
         ]
@@ -43,9 +44,14 @@ export default function Layout({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="brand">☎ OpenPBX</div>
         {me?.role === "superadmin" && (
-          <Link className="navlink" to="/tenants">
-            All Companies
-          </Link>
+          <>
+            <Link className="navlink" to="/tenants">
+              All Companies
+            </Link>
+            <Link className="navlink" to="/platform-billing">
+              Platform Billing
+            </Link>
+          </>
         )}
         {[...tenantNav, ...agentNav].map(([label, to]) => (
           <Link

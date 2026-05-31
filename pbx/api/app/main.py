@@ -14,9 +14,9 @@ from .notifications import notification_worker
 from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
-    auth, calls, cdr, dids, extensions, ivr, me, notifications, prompts,
-    queues, recordings, retention, ringgroups, routes, status, tenants,
-    timeconditions, trunks, voicemail,
+    auth, billing, calls, cdr, dids, extensions, ivr, me, notifications,
+    prompts, queues, recordings, retention, ringgroups, routes, status,
+    tenants, timeconditions, trunks, voicemail,
 )
 
 
@@ -92,6 +92,8 @@ app.include_router(recordings.router)
 app.include_router(retention.router)
 app.include_router(notifications.router)
 app.include_router(notifications.internal_router)
+app.include_router(billing.router)
+app.include_router(billing.platform_router)
 app.include_router(status.router)
 
 
