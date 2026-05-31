@@ -46,7 +46,7 @@ services:
       - "${SIP_TCP_PORT}:5060/tcp"
       - "${SIP_TLS_PORT}:5061/tcp"
       - "${WSS_PORT}:8089/tcp"        # secure websocket for WebRTC softphone
-      - "8088:8088/tcp"               # internal HTTP (ARI/AMI) — keep firewalled
+      - "127.0.0.1:8088:8088/tcp"     # internal HTTP (ARI) — localhost only, never public
       - "${RTP_START}-${RTP_END}:${RTP_START}-${RTP_END}/udp"
     volumes:
       # Configs are mounted as TEMPLATES; the entrypoint renders env vars into

@@ -14,3 +14,6 @@ api/app/**/__pycache__/
 # Asterisk runtime (if ever run outside docker)
 *.log
 web/*.tsbuildinfo
+
+# deploy secrets
+deploy/ADMIN_PASSWORD.txt
