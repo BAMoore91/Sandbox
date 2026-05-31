@@ -69,8 +69,41 @@ next call without restarting anything.
 | Role | Scope |
 |---|---|
 | `superadmin` | platform-wide: companies, plans, shared trunks |
-| `admin` | full control of their own company's call flow + users |
-| `agent` | (extend as needed) softphone + personal settings |
+| `admin` | full control of their own company's call flow, settings, and users |
+| `agent` | self-service only: their own linked extension |
 
-Create tenant users via **Companies → users** (super-admin) or the
-`/api/tenants/{id}/users` endpoint.
+### Admin vs. agent enforcement
+
+Authorization is enforced server-side, not just in the UI:
+
+- The whole **configuration surface** (`/api/tenants/{id}/…` for extensions,
+  IVRs, ring groups, queues, trunks, DIDs, outbound routes, prompts, schedules,
+  CDR, users) goes through the `tenant_scope` dependency, which now **requires
+  `admin` or `superadmin`** — an agent's token gets `403`.
+- The **dashboard/status** panels use `tenant_scope_read` (membership only) so
+  agents can still see live status if you choose to show it.
+- Agents get a dedicated **`/api/me/*`** surface that only ever touches their
+  *own* extension: profile, online status, DND, call-forward, ring time, SIP
+  password regeneration, voicemail PIN, click-to-call, and personal call
+  history. With no linked extension these return `404`.
+
+Roles are carried as a claim in the JWT, so a role change takes effect on the
+user's next login.
+
+### Managing users (admin)
+
+The portal's **Users & Roles** page (or `POST/PATCH /api/tenants/{id}/users`)
+lets an admin:
+
+- create logins as `admin` or `agent`,
+- **link an agent to an extension** (by extension number — validated against
+  the company), giving them the "My Phone" self-service portal,
+- promote/demote roles, enable/disable, and delete logins.
+
+### What each role sees in the web console
+
+- **agent** → redirected to **/me** ("My Phone"): status, DND, call-forward,
+  click-to-call dialer, softphone credentials, and their own call history.
+  The admin console and other tenants are blocked at the router and the API.
+- **admin** → the full company console (incl. Users & Roles).
+- **superadmin** → also the platform **Companies** screen.

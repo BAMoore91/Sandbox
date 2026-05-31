@@ -7,20 +7,31 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { tid } = useParams();
   const loc = useLocation();
 
-  const tenantNav = tid
+  // Agents get a single self-service link; admins get the full console.
+  const isAgent = me?.role === "agent";
+  const tenantNav =
+    tid && !isAgent
+      ? [
+          ["Dashboard", `/t/${tid}/dashboard`],
+          ["Users & Roles", `/t/${tid}/users`],
+          ["Extensions", `/t/${tid}/extensions`],
+          ["Auto-Attendant", `/t/${tid}/ivrs`],
+          ["Ring Groups", `/t/${tid}/ring-groups`],
+          ["Queues", `/t/${tid}/queues`],
+          ["Schedules", `/t/${tid}/schedules`],
+          ["Prompts", `/t/${tid}/prompts`],
+          ["Inbound (DIDs)", `/t/${tid}/dids`],
+          ["Outbound Rules", `/t/${tid}/outbound`],
+          ["Trunks", `/t/${tid}/trunks`],
+          ["Call Logs", `/t/${tid}/cdr`],
+          ["Softphone", `/t/${tid}/softphone`],
+        ]
+      : [];
+
+  const agentNav = isAgent
     ? [
-        ["Dashboard", `/t/${tid}/dashboard`],
-        ["Extensions", `/t/${tid}/extensions`],
-        ["Auto-Attendant", `/t/${tid}/ivrs`],
-        ["Ring Groups", `/t/${tid}/ring-groups`],
-        ["Queues", `/t/${tid}/queues`],
-        ["Schedules", `/t/${tid}/schedules`],
-        ["Prompts", `/t/${tid}/prompts`],
-        ["Inbound (DIDs)", `/t/${tid}/dids`],
-        ["Outbound Rules", `/t/${tid}/outbound`],
-        ["Trunks", `/t/${tid}/trunks`],
-        ["Call Logs", `/t/${tid}/cdr`],
-        ["Softphone", `/t/${tid}/softphone`],
+        ["My Phone", "/me"],
+        ["Softphone", "/me/softphone"],
       ]
     : [];
 
@@ -33,7 +44,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             All Companies
           </Link>
         )}
-        {tenantNav.map(([label, to]) => (
+        {[...tenantNav, ...agentNav].map(([label, to]) => (
           <Link
             key={to}
             to={to}

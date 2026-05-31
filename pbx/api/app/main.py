@@ -11,7 +11,7 @@ from .asterisk import ari_healthy
 from .config import settings
 from .security import hash_password
 from .routers import (
-    auth, calls, cdr, dids, extensions, ivr, prompts, queues, ringgroups,
+    auth, calls, cdr, dids, extensions, ivr, me, prompts, queues, ringgroups,
     routes, status, tenants, timeconditions, trunks, voicemail,
 )
 
@@ -56,6 +56,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(auth.router)
+app.include_router(me.router)
 app.include_router(tenants.router)
 app.include_router(extensions.router)
 app.include_router(trunks.router)

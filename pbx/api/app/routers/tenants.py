@@ -154,15 +154,38 @@ class UserIn(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
-    role: str = "agent"          # admin | agent
-    extension_id: int | None = None
+    role: str = "agent"               # admin | agent
+    extension: str | None = None      # link to this extension number (agents)
+
+
+class UserPatch(BaseModel):
+    full_name: str | None = None
+    role: str | None = None
+    password: str | None = None
+    is_active: bool | None = None
+    extension: str | None = None      # "" to unlink
+
+
+async def _extension_id_for(tenant_id: int, number: str | None) -> int | None:
+    """Resolve an extension number to its id within the tenant (or None)."""
+    if not number:
+        return None
+    eid = await db.fetchval(
+        "SELECT id FROM extensions WHERE tenant_id=$1 AND extension=$2",
+        tenant_id, number)
+    if eid is None:
+        raise HTTPException(422, f"extension {number} not found in this company")
+    return eid
 
 
 @router.get("/tenants/{tenant_id}/users")
 async def list_users(tenant_id: int = Depends(tenant_scope)) -> list[dict]:
     rows = await db.fetch(
-        """SELECT id, email, full_name, role, extension_id, is_active, last_login_at
-           FROM users WHERE tenant_id = $1 ORDER BY email""",
+        """SELECT u.id, u.email, u.full_name, u.role, u.extension_id,
+                  e.extension AS extension, u.is_active, u.last_login_at
+           FROM users u
+           LEFT JOIN extensions e ON e.id = u.extension_id
+           WHERE u.tenant_id = $1 ORDER BY u.role, u.email""",
         tenant_id,
     )
     return [dict(r) for r in rows]
@@ -172,16 +195,49 @@ async def list_users(tenant_id: int = Depends(tenant_scope)) -> list[dict]:
 async def create_user(body: UserIn, tenant_id: int = Depends(tenant_scope)) -> dict:
     if body.role not in ("admin", "agent"):
         raise HTTPException(422, "role must be admin or agent")
+    ext_id = await _extension_id_for(tenant_id, body.extension)
     try:
         uid = await db.fetchval(
             """INSERT INTO users (tenant_id, email, password_hash, full_name, role, extension_id)
                VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
             tenant_id, body.email, hash_password(body.password),
-            body.full_name, body.role, body.extension_id,
+            body.full_name, body.role, ext_id,
         )
     except Exception:
         raise HTTPException(409, "email already in use for this tenant")
     return {"id": uid}
+
+
+@router.patch("/tenants/{tenant_id}/users/{user_id}")
+async def update_user(user_id: int, body: UserPatch,
+                      tenant_id: int = Depends(tenant_scope)) -> dict:
+    owned = await db.fetchval(
+        "SELECT 1 FROM users WHERE id=$1 AND tenant_id=$2", user_id, tenant_id)
+    if not owned:
+        raise HTTPException(404, "user not found")
+
+    sets, vals = [], []
+    if body.full_name is not None:
+        vals.append(body.full_name); sets.append(f"full_name = ${len(vals)}")
+    if body.role is not None:
+        if body.role not in ("admin", "agent"):
+            raise HTTPException(422, "role must be admin or agent")
+        vals.append(body.role); sets.append(f"role = ${len(vals)}")
+    if body.is_active is not None:
+        vals.append(body.is_active); sets.append(f"is_active = ${len(vals)}")
+    if body.password:
+        vals.append(hash_password(body.password)); sets.append(f"password_hash = ${len(vals)}")
+    if body.extension is not None:
+        # empty string unlinks; otherwise resolve+validate within tenant
+        ext_id = await _extension_id_for(tenant_id, body.extension or None)
+        vals.append(ext_id); sets.append(f"extension_id = ${len(vals)}")
+    if not sets:
+        raise HTTPException(422, "no fields to update")
+    vals += [user_id, tenant_id]
+    await db.execute(
+        f"UPDATE users SET {', '.join(sets)} "
+        f"WHERE id = ${len(vals)-1} AND tenant_id = ${len(vals)}", *vals)
+    return {"id": user_id, "status": "updated"}
 
 
 @router.delete("/tenants/{tenant_id}/users/{user_id}", status_code=204)

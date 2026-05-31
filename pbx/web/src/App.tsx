@@ -15,11 +15,14 @@ import RingGroups from "./components/RingGroups";
 import Queues from "./components/Queues";
 import Schedules from "./components/Schedules";
 import OutboundRoutes from "./components/OutboundRoutes";
+import AgentPortal from "./components/AgentPortal";
+import Users from "./components/Users";
 
 function HomeRedirect() {
   const { me } = useAuth();
   if (!me) return <Navigate to="/login" replace />;
   if (me.role === "superadmin") return <Navigate to="/tenants" replace />;
+  if (me.role === "agent") return <Navigate to="/me" replace />;
   return <Navigate to={`/t/${me.tenant_id}/dashboard`} replace />;
 }
 
@@ -30,10 +33,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children;
 }
 
-// Guard cross-tenant URL tampering for non-superadmins.
+// Guard the admin console: agents are sent to their self-service portal, and
+// non-superadmins can't reach another tenant's URL.
 function TenantGuard({ children }: { children: JSX.Element }) {
   const { tid } = useParams();
   const { me } = useAuth();
+  if (me && me.role === "agent") return <Navigate to="/me" replace />;
   if (me && me.role !== "superadmin" && String(me.tenant_id) !== tid)
     return <Navigate to="/" replace />;
   return children;
@@ -44,6 +49,27 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<HomeRedirect />} />
+
+      <Route
+        path="/me"
+        element={
+          <RequireAuth>
+            <Layout>
+              <AgentPortal />
+            </Layout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/softphone"
+        element={
+          <RequireAuth>
+            <Layout>
+              <Softphone />
+            </Layout>
+          </RequireAuth>
+        }
+      />
 
       <Route
         path="/tenants"
@@ -78,6 +104,7 @@ function TenantRoutes() {
   return (
     <Routes>
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="users" element={<Users />} />
       <Route path="extensions" element={<Extensions />} />
       <Route path="ivrs" element={<Ivrs />} />
       <Route path="ring-groups" element={<RingGroups />} />
