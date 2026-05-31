@@ -15,6 +15,7 @@
 | 5061 | TCP | SIP over TLS |
 | 8089 | TCP | Secure WebSocket (WebRTC softphone) |
 | 10000–10200 | UDP | RTP media (must match `RTP_START/END`) |
+| 4000–4999 | UDP | T.38 fax (UDPTL; see `asterisk/etc/udptl.conf`) |
 
 > Do **not** expose 8088 (ARI/AMI HTTP) or 5038 (AMI) publicly. They are only
 > reachable on the internal Docker network by design.

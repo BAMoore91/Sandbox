@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     sip_udp_port: int = 5060
     sip_tls_port: int = 5061     # used for secure (TLS) Twilio origination URLs
 
+    # --- Fax ---
+    # Shared spool volume (TIFFs from Asterisk; PDFs the API renders).
+    fax_dir: str = "/fax"
+    fax_stasis_app: str = "openpbx-fax"
+
     # --- Flows (Studio-style call flows) + voice transcription ---
     # ARI Stasis app name the dialplan hands flow calls to.
     flow_stasis_app: str = "openpbx-flow"

@@ -9,6 +9,7 @@ export const DEST_TYPES = [
   "queue",
   "ivr",
   "flow",
+  "fax",
   "voicemail",
   "timecondition",
   "hangup",

@@ -40,6 +40,10 @@ mkdir -p /etc/asterisk/dialplan
     > /etc/asterisk/dialplan/.keep
 chown -R asterisk:asterisk /etc/asterisk/dialplan || true
 
+# ---- Fax spool (shared with the API) --------------------------------------
+mkdir -p /var/spool/asterisk/fax
+chown -R asterisk:asterisk /var/spool/asterisk/fax || true
+
 # ---- TLS cert (self-signed fallback) --------------------------------------
 mkdir -p /etc/asterisk/keys
 if [[ ! -f "${TLS_CERT_FILE}" || ! -f "${TLS_KEY_FILE}" ]]; then

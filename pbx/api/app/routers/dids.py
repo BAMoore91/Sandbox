@@ -10,7 +10,7 @@ from ..deps import tenant_scope
 router = APIRouter(prefix="/api/tenants/{tenant_id}/dids", tags=["dids"])
 
 VALID_DEST = {"extension", "ringgroup", "queue", "ivr", "voicemail",
-              "timecondition", "external", "flow", "hangup"}
+              "timecondition", "external", "flow", "fax", "hangup"}
 
 
 class DidIn(BaseModel):

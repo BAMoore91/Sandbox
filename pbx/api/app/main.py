@@ -12,11 +12,12 @@ from .asterisk import ari_healthy
 from .config import settings
 from .billing import autofinalize_scheduler
 from .flow_ari import stasis_listener
+from .fax import fax_stasis_listener
 from .notifications import notification_worker
 from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
-    auth, billing, calls, cdr, dids, extensions, flows, ivr, me, notifications,
+    auth, billing, calls, cdr, dids, extensions, fax, flows, ivr, me, notifications,
     prompts, provisioning, queues, recordings, retention, ringgroups, routes,
     status, tenants, timeconditions, trunks, twilio_integration, voicemail,
     wallboard,
@@ -53,6 +54,8 @@ async def lifespan(app: FastAPI):
         tasks.append(asyncio.create_task(autofinalize_scheduler(stop)))
     # Flow engine: listen on the ARI Stasis app for calls entering flows.
     tasks.append(asyncio.create_task(stasis_listener(stop)))
+    # Fax engine: Stasis completion events for inbound/outbound faxes.
+    tasks.append(asyncio.create_task(fax_stasis_listener(stop)))
     yield
     stop.set()
     for task in tasks:
@@ -107,6 +110,7 @@ app.include_router(provisioning.router)
 app.include_router(provisioning.keys_router)
 app.include_router(provisioning.fetch_router)
 app.include_router(flows.router)
+app.include_router(fax.router)
 app.include_router(status.router)
 
 

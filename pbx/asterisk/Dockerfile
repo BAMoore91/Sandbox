@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         asterisk \
         asterisk-modules \
         asterisk-config \
+        libtiff-tools \
         odbc-postgresql \
         unixodbc \
         gettext-base \

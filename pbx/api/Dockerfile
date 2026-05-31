@@ -3,8 +3,10 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
-# ffmpeg/ffprobe transcode customer-uploaded prompts to Asterisk-ready WAV
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+# ffmpeg: transcode prompts to Asterisk WAV.
+# ghostscript + libtiff: convert fax PDF<->TIFF (outbound send / inbound email).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg ghostscript libtiff-tools \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

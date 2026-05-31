@@ -22,6 +22,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Trunks** | view shared trunk / add own Twilio trunk | `/trunks` |
 | **Call Logs** | filterable CDR | `/cdr` |
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
+| **Fax** | fax boxes (inbound→email), send-fax (PDF), fax history | `/fax` |
 | **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
 | **Notifications** | per-extension missed-call/voicemail email & SMS alerts + outbox | `/tenants/{id}/notifications` |
 | **Billing & Usage** | metered usage + monthly invoice, CSV export, finalize, Stripe charge, auto-bill | `/tenants/{id}/billing` |
@@ -223,6 +224,29 @@ taken, captured recordings/transcripts, and webhook logs are queryable per flow.
 The engine is driver-abstracted (`api/app/flow_engine.py`) and unit-tested
 (`api/tests/test_flow_engine.py`); the ARI driver (`flow_ari.py`) supplies the
 media actions in production.
+
+## Fax (inbound fax-to-email + outbound send-fax)
+
+Faxing runs over **T.38** using Asterisk's `res_fax_spandsp`
+(`ReceiveFAX`/`SendFAX`); the API handles PDF⇄TIFF conversion and delivery.
+
+- **Fax boxes (inbound → email):** create a box with a number + recipient
+  email(s), then point a DID at `fax → <box number>`. On an inbound fax,
+  `[fax-receive]` answers and writes a TIFF to the shared fax spool; the API
+  (`fax.py`, via the `openpbx-fax` Stasis app) converts it to **PDF** and
+  **emails it** to the box recipients, logging the job. `/tenants/{id}/fax/boxes`.
+- **Send fax (outbound):** upload a **PDF** in the portal; the API renders it to
+  a Group-4 fax **TIFF** (ghostscript), then originates a call out the tenant's
+  trunk into `[fax-send]` which runs `SendFAX`. `POST …/fax/send`.
+- **History & download:** every send/receive is a `faxes` row with status
+  (pending/sending/sent/received/failed), page count, and a downloadable PDF.
+  `GET …/fax`, `GET …/fax/{id}/pdf`.
+
+Open the **UDPTL** port range (`asterisk/etc/udptl.conf`, default 4000–4999/udp)
+on the firewall for T.38, alongside RTP. Twilio trunks support T.38; ensure the
+trunk has fax/T.38 enabled. Inbound email delivery reuses the SMTP settings
+(`SMTP_*`). The conversion + delivery logic lives in `api/app/fax.py`; spandsp
+media is handled by Asterisk.
 
 ## Auto phone provisioning & BLF keys
 

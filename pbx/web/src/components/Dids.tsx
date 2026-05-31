@@ -7,7 +7,7 @@ interface Did {
   dest_type: string; dest_value: string; enabled: boolean;
 }
 
-const DEST_TYPES = ["extension", "ringgroup", "queue", "ivr", "flow", "voicemail", "timecondition", "hangup"];
+const DEST_TYPES = ["extension", "ringgroup", "queue", "ivr", "flow", "fax", "voicemail", "timecondition", "hangup"];
 
 export default function Dids() {
   const { tid } = useParams();

@@ -47,6 +47,7 @@ call logs — billed per subscription plan.
 | Click-to-call | ✅ via ARI originate |
 | Call reporting / CDR | ✅ per-tenant CDR + summaries |
 | Call recording | ✅ MixMonitor capture + portal playback/download |
+| Fax | ✅ inbound fax-to-email + outbound send-fax (T.38/spandsp, PDF↔TIFF) |
 | Data retention | ✅ per-tenant auto-purge of recordings & CDR (daily sweeper) |
 | Missed-call / voicemail alerts | ✅ per-extension email & SMS (Twilio) notifications |
 | Usage metering & billing | ✅ per-tenant invoices from CDR + plan, CSV export, platform run |

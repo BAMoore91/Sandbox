@@ -20,6 +20,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           ["Phones", `/t/${tid}/phones`],
           ["Auto-Attendant", `/t/${tid}/ivrs`],
           ["Flows", `/t/${tid}/flows`],
+          ["Fax", `/t/${tid}/fax`],
           ["Ring Groups", `/t/${tid}/ring-groups`],
           ["Queues", `/t/${tid}/queues`],
           ["Schedules", `/t/${tid}/schedules`],
