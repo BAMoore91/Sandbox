@@ -10,12 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import db
 from .asterisk import ari_healthy
 from .config import settings
+from .notifications import notification_worker
 from .retention import retention_scheduler
 from .security import hash_password
 from .routers import (
-    auth, calls, cdr, dids, extensions, ivr, me, prompts, queues, recordings,
-    retention, ringgroups, routes, status, tenants, timeconditions, trunks,
-    voicemail,
+    auth, calls, cdr, dids, extensions, ivr, me, notifications, prompts,
+    queues, recordings, retention, ringgroups, routes, status, tenants,
+    timeconditions, trunks, voicemail,
 )
 
 
@@ -38,14 +39,16 @@ async def _bootstrap_admin() -> None:
 async def lifespan(app: FastAPI):
     await db.connect()
     await _bootstrap_admin()
-    # Start the background retention sweeper (auto-purge old recordings/CDR).
+    # Start background workers: retention sweeper + notification deliverer.
     stop = asyncio.Event()
-    task = None
+    tasks = []
     if settings.retention_enabled and settings.retention_interval_hours > 0:
-        task = asyncio.create_task(retention_scheduler(stop))
+        tasks.append(asyncio.create_task(retention_scheduler(stop)))
+    if settings.notifications_enabled:
+        tasks.append(asyncio.create_task(notification_worker(stop)))
     yield
     stop.set()
-    if task:
+    for task in tasks:
         task.cancel()
         try:
             await task
@@ -87,6 +90,8 @@ app.include_router(calls.router)
 app.include_router(cdr.router)
 app.include_router(recordings.router)
 app.include_router(retention.router)
+app.include_router(notifications.router)
+app.include_router(notifications.internal_router)
 app.include_router(status.router)
 
 

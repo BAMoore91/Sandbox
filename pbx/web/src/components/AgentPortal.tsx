@@ -12,6 +12,12 @@ interface MyExt {
   voicemail_enabled: boolean;
   webrtc: boolean;
   tenant_slug: string;
+  notify_email: string | null;
+  notify_sms: string | null;
+  notify_on_missed: boolean;
+  notify_on_voicemail: boolean;
+  notify_channel_email: boolean;
+  notify_channel_sms: boolean;
 }
 interface Me {
   email: string;
@@ -219,6 +225,67 @@ export default function AgentPortal() {
               <div className="small muted">Copy now — it isn't shown again.</div>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Notifications</h3>
+        <p className="muted small">
+          Get alerted on missed calls and new voicemail. SMS requires your
+          admin to have Twilio configured on the server.
+        </p>
+        <div className="row2">
+          <div className="form" style={{ flex: 1 }}>
+            <div className="subhead">Events</div>
+            <label className="row">
+              <input
+                type="checkbox"
+                checked={e.notify_on_missed}
+                onChange={(ev) => patch({ notify_on_missed: ev.target.checked }, "Saved")}
+              />{" "}
+              Missed calls
+            </label>
+            <label className="row">
+              <input
+                type="checkbox"
+                checked={e.notify_on_voicemail}
+                onChange={(ev) => patch({ notify_on_voicemail: ev.target.checked }, "Saved")}
+              />{" "}
+              New voicemail
+            </label>
+          </div>
+          <div className="form" style={{ flex: 1 }}>
+            <div className="subhead">Email</div>
+            <label className="row">
+              <input
+                type="checkbox"
+                checked={e.notify_channel_email}
+                onChange={(ev) => patch({ notify_channel_email: ev.target.checked }, "Saved")}
+              />{" "}
+              Enabled
+            </label>
+            <input
+              placeholder="email (blank = account email)"
+              defaultValue={e.notify_email || ""}
+              onBlur={(ev) => patch({ notify_email: ev.target.value }, "Email saved")}
+            />
+          </div>
+          <div className="form" style={{ flex: 1 }}>
+            <div className="subhead">SMS</div>
+            <label className="row">
+              <input
+                type="checkbox"
+                checked={e.notify_channel_sms}
+                onChange={(ev) => patch({ notify_channel_sms: ev.target.checked }, "Saved")}
+              />{" "}
+              Enabled
+            </label>
+            <input
+              placeholder="+1 mobile number"
+              defaultValue={e.notify_sms || ""}
+              onBlur={(ev) => patch({ notify_sms: ev.target.value }, "SMS number saved")}
+            />
+          </div>
         </div>
       </div>
 

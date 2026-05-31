@@ -19,6 +19,7 @@ import AgentPortal from "./components/AgentPortal";
 import Users from "./components/Users";
 import Recordings from "./components/Recordings";
 import Settings from "./components/Settings";
+import Notifications from "./components/Notifications";
 
 function HomeRedirect() {
   const { me } = useAuth();
@@ -118,6 +119,7 @@ function TenantRoutes() {
       <Route path="trunks" element={<Trunks />} />
       <Route path="cdr" element={<Cdr />} />
       <Route path="recordings" element={<Recordings />} />
+      <Route path="notifications" element={<Notifications />} />
       <Route path="settings" element={<Settings />} />
       <Route path="softphone" element={<Softphone />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />

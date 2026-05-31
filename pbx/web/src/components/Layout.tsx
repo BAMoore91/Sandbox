@@ -25,6 +25,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           ["Trunks", `/t/${tid}/trunks`],
           ["Call Logs", `/t/${tid}/cdr`],
           ["Recordings", `/t/${tid}/recordings`],
+          ["Notifications", `/t/${tid}/notifications`],
           ["Settings", `/t/${tid}/settings`],
           ["Softphone", `/t/${tid}/softphone`],
         ]

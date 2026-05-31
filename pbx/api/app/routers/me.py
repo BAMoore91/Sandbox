@@ -48,6 +48,13 @@ class SelfPatch(BaseModel):
     ring_seconds: int | None = None
     sip_password: str | None = None
     vm_pin: str | None = None
+    # own notification preferences
+    notify_email: str | None = None
+    notify_sms: str | None = None
+    notify_on_missed: bool | None = None
+    notify_on_voicemail: bool | None = None
+    notify_channel_email: bool | None = None
+    notify_channel_sms: bool | None = None
 
 
 class SelfCall(BaseModel):
@@ -73,6 +80,12 @@ async def whoami(user: Principal = Depends(current_user)) -> dict:
             "voicemail_enabled": ext["voicemail_enabled"],
             "webrtc": ext["webrtc"],
             "tenant_slug": ext["tenant_slug"],
+            "notify_email": ext["notify_email"],
+            "notify_sms": ext["notify_sms"],
+            "notify_on_missed": ext["notify_on_missed"],
+            "notify_on_voicemail": ext["notify_on_voicemail"],
+            "notify_channel_email": ext["notify_channel_email"],
+            "notify_channel_sms": ext["notify_channel_sms"],
         }
     except HTTPException:
         out["extension"] = None
@@ -98,7 +111,9 @@ async def update_self(body: SelfPatch, user: Principal = Depends(current_user)) 
     tid, slug, number = ext["tenant_id"], ext["tenant_slug"], ext["extension"]
 
     sets, vals = [], []
-    for f in ("dnd", "call_forward", "ring_seconds"):
+    for f in ("dnd", "call_forward", "ring_seconds",
+              "notify_email", "notify_sms", "notify_on_missed",
+              "notify_on_voicemail", "notify_channel_email", "notify_channel_sms"):
         v = getattr(body, f)
         if v is not None:
             vals.append(v)

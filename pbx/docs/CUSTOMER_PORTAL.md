@@ -23,6 +23,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Call Logs** | filterable CDR | `/cdr` |
 | **Recordings** | list / play / download / delete call recordings | `/recordings` |
 | **Settings** | company name, timezone, recording on/off, data retention | `/tenants/{id}` |
+| **Notifications** | per-extension missed-call/voicemail email & SMS alerts + outbox | `/tenants/{id}/notifications` |
 | **Users & Roles** | create logins, set role, link agents to extensions | `/tenants/{id}/users` |
 | **Softphone** | in-browser WebRTC phone | (SIP over WSS) |
 
@@ -69,6 +70,41 @@ admin-initiated, single action).
 File deletion reuses the same tenant-scoped path guard as playback, so a
 purge can only ever touch files inside that tenant's own subtree, and it
 prunes the emptied date directories afterward.
+
+## Missed-call & voicemail notifications
+
+Each extension can be alerted by **email** and/or **SMS** on a missed call or
+a new voicemail. Preferences are per-extension (admins set them under
+**Notifications**; agents manage their own under **My Phone → Notifications**):
+events to alert on (missed / voicemail), which channels are enabled, and the
+email address / mobile number to use (email defaults to the account email).
+
+How it flows:
+
+1. **Enqueue.** On an unanswered call the dialplan calls `ODBC_NOTIFY(...)`,
+   which fans out one `notifications` outbox row per enabled channel for the
+   extension (honoring its prefs). New voicemail is enqueued by the voicemail
+   `externnotify` hook (`asterisk/scripts/vm-notify.sh`) — which fires exactly
+   when a message is stored — posting to the API's internal enqueue endpoint.
+2. **Deliver.** A background worker (`api/app/notifications.py`) drains pending
+   rows every `NOTIFY_POLL_SECONDS`, sending email via SMTP and SMS via the
+   Twilio REST API, with capped exponential-backoff retries
+   (`NOTIFY_MAX_ATTEMPTS`). A failed/un-configured channel is retried and
+   surfaced with its last error in the outbox; the other channel is unaffected.
+3. **Multi-replica safe.** The worker holds a Postgres advisory lock, so only
+   one API replica delivers at a time (others still enqueue).
+
+Configure SMTP and/or Twilio in `.env` (`SMTP_*`, `TWILIO_*`). Leaving a
+channel's settings empty simply skips that channel. SMS reuses your Twilio
+account but is independent of SIP trunking; `TWILIO_SMS_FROM` may be an E.164
+number or a Messaging Service SID.
+
+The internal enqueue endpoint (`/api/internal/notify`) is **unauthenticated by
+design** and only reachable on the private Docker network — the public nginx
+proxy returns 404 for `/api/internal/`.
+
+Admins can fire a **Test** from the Notifications page to queue and immediately
+attempt a sample alert for any extension.
 
 ## Uploading prompts (how it works)
 

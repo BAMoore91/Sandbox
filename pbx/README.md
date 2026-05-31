@@ -47,6 +47,7 @@ call logs — billed per subscription plan.
 | Call reporting / CDR | ✅ per-tenant CDR + summaries |
 | Call recording | ✅ MixMonitor capture + portal playback/download |
 | Data retention | ✅ per-tenant auto-purge of recordings & CDR (daily sweeper) |
+| Missed-call / voicemail alerts | ✅ per-extension email & SMS (Twilio) notifications |
 
 ## Quick start
 
