@@ -3,6 +3,19 @@ import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { DestinationPicker, useFormError } from "./flow";
 
+interface Holiday {
+  id: number;
+  name: string;
+  recurring: boolean;
+  month: number;
+  day: number;
+  year: number | null;
+  times: string;
+  dest_type: string | null;
+  dest_value: string | null;
+  enabled: boolean;
+}
+
 interface Range {
   times: string;
   weekdays: string;
@@ -232,6 +245,106 @@ export default function Schedules() {
           </table>
         </div>
       </div>
+
+      {editId && <Holidays tid={tid!} tcId={editId} />}
+    </div>
+  );
+}
+
+const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function Holidays({ tid, tcId }: { tid: string; tcId: number }) {
+  const [list, setList] = useState<Holiday[]>([]);
+  const [form, setForm] = useState<any>({
+    name: "", recurring: true, month: 1, day: 1, year: new Date().getFullYear(),
+    times: "*", dest_type: "", dest_value: "",
+  });
+  const [err, setErr] = useState("");
+
+  const base = `/api/tenants/${tid}/time-conditions/${tcId}/holidays`;
+  async function load() {
+    setList(await api.get<Holiday[]>(base));
+  }
+  useEffect(() => {
+    load();
+  }, [tid, tcId]);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    setErr("");
+    try {
+      await api.post(base, {
+        name: form.name,
+        recurring: form.recurring,
+        month: +form.month,
+        day: +form.day,
+        year: form.recurring ? null : +form.year,
+        times: form.times || "*",
+        dest_type: form.dest_type || null,
+        dest_value: form.dest_value || null,
+      });
+      setForm({ ...form, name: "" });
+      load();
+    } catch (e: any) {
+      setErr(typeof e.message === "string" ? e.message : JSON.stringify(e.message));
+    }
+  }
+  async function remove(id: number) {
+    await api.del(`${base}/${id}`);
+    load();
+  }
+
+  return (
+    <div className="card">
+      <h3>Holidays for this schedule</h3>
+      <p className="muted small">
+        A holiday forces the schedule <b>closed</b> for that day (overriding open
+        hours). Recurring = same date every year; otherwise set a specific year.
+        Leave the destination blank to use the schedule's “outside open hours”
+        routing, or pick one for a special holiday greeting.
+      </p>
+      {err && <div className="error">{err}</div>}
+      <form className="optrow" onSubmit={add}>
+        <input style={{ width: 150 }} value={form.name} placeholder="Holiday name"
+          onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        <select value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}>
+          {MONTHS.slice(1).map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+        </select>
+        <input style={{ width: 55 }} type="number" min={1} max={31} value={form.day}
+          onChange={(e) => setForm({ ...form, day: e.target.value })} />
+        <label className="row small">
+          <input type="checkbox" checked={form.recurring}
+            onChange={(e) => setForm({ ...form, recurring: e.target.checked })} /> yearly
+        </label>
+        {!form.recurring && (
+          <input style={{ width: 70 }} type="number" value={form.year}
+            onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="year" />
+        )}
+        <input style={{ width: 100 }} value={form.times} placeholder="* or 09:00-12:00"
+          onChange={(e) => setForm({ ...form, times: e.target.value })} />
+        <button className="btn small">+ Add holiday</button>
+      </form>
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Date</th><th>When</th><th>Hours</th><th>Routing</th><th></th></tr>
+        </thead>
+        <tbody>
+          {list.map((h) => (
+            <tr key={h.id}>
+              <td>{h.name}</td>
+              <td>{MONTHS[h.month]} {h.day}</td>
+              <td className="small">{h.recurring ? "every year" : h.year}</td>
+              <td className="small">{h.times === "*" ? "all day" : h.times}</td>
+              <td className="small">
+                {h.dest_type ? `${h.dest_type} → ${h.dest_value}` : "closed (default)"}
+              </td>
+              <td><button className="btn small danger" onClick={() => remove(h.id)}>✕</button></td>
+            </tr>
+          ))}
+          {list.length === 0 && <tr><td colSpan={6} className="muted">No holidays yet.</td></tr>}
+        </tbody>
+      </table>
     </div>
   );
 }

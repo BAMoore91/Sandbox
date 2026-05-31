@@ -15,7 +15,7 @@ cross-tenant access (HTTP 403). Platform super-admins additionally see the
 | **Auto-Attendant (IVR)** | greeting + per-key routing, timeout/invalid fallbacks, direct dial | `/ivrs` |
 | **Ring Groups** | members, ring strategy, no-answer destination | `/ring-groups` |
 | **Queues** | ACD queues, strategy, add/remove agents live | `/queues` |
-| **Schedules** | business-hours time ranges + open/closed routing | `/time-conditions` |
+| **Schedules** | office-hours ranges + **holiday** overrides + open/closed routing | `/time-conditions` |
 | **Prompts** | upload/play/delete custom audio (greetings, announcements, MoH) | `/prompts` |
 | **Inbound (DIDs)** | map each phone number to any destination | `/dids` |
 | **Outbound Rules** | dial patterns → trunk, caller ID, digit manipulation | `/outbound-routes` |
@@ -306,11 +306,29 @@ A typical inbound flow a customer can build entirely in the portal:
 
 ```
 DID +1310… ─▶ Schedule "Business Hours"
-                 ├─ open  ─▶ IVR 500  ─1▶ Extension 1001
-                 │                     ─2▶ Ring Group 600 (Sales)
-                 │                     ─3▶ Queue 800 (Support)
-                 └─ closed ─▶ Voicemail 1001  (plays custom "after-hours" prompt)
+                 ├─ holiday ─▶ Voicemail 1001  (forced closed, overrides hours)
+                 ├─ open    ─▶ IVR 500  ─1▶ Extension 1001
+                 │                       ─2▶ Ring Group 600 (Sales)
+                 │                       ─3▶ Queue 800 (Support)
+                 └─ closed  ─▶ Voicemail 1001  (plays custom "after-hours" prompt)
 ```
+
+### Office hours & holidays (time-based routing)
+
+A **Schedule** (time condition) routes calls by date/time, in the tenant's
+timezone, evaluated by Asterisk's native `GotoIfTime`:
+
+- **Office hours** — one or more open-hours ranges (`times`, `weekdays`,
+  `monthdays`, `months`; `*` = any), e.g. `09:00-17:00 / mon-fri`. A match
+  routes to the **open** destination; otherwise the **closed** destination.
+- **Holidays** — closed-day overrides attached to the schedule, checked
+  **before** open hours, so a holiday forces *closed even during office hours*.
+  Each is **recurring** (same month/day yearly, e.g. Dec 25) or a **one-off**
+  (a specific year). An optional time range models partial-day closures
+  (e.g. `09:00-12:00` on Christmas Eve). A holiday can use the schedule's normal
+  closed destination, or its **own** destination for a special greeting.
+
+Precedence in the dialplan (`[tc-exec]`): **holiday → open range → closed.**
 
 Because endpoints, queues, voicemail and prompts are all read by Asterisk from
 the database / shared volume in realtime, customer changes take effect on the

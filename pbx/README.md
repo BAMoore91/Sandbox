@@ -40,7 +40,7 @@ call logs — billed per subscription plan.
 | IVR / digital receptionist | ✅ multi-level, timeout/invalid handling, direct dial |
 | Ring groups | ✅ ring-all + failover destination |
 | Call queues (ACD) | ✅ realtime `app_queue`, agents, strategies |
-| Time-based routing | ✅ time conditions + ranges, per-tenant timezone |
+| Time-based routing | ✅ office-hours ranges + holiday overrides, per-tenant timezone |
 | Voicemail + email | ✅ realtime mailboxes, email delivery |
 | Outbound rules / caller ID | ✅ pattern routes, per-route CID, digit manipulation |
 | Click-to-call | ✅ via ARI originate |
