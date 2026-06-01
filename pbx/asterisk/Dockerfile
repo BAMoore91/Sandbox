@@ -1,11 +1,19 @@
 # ============================================================================
-#  Asterisk 20 (Debian Bookworm) with PJSIP realtime over PostgreSQL/ODBC.
+#  Asterisk (PJSIP realtime over PostgreSQL/ODBC).
+#  Base: Ubuntu 22.04 (jammy) — ships Asterisk 18 in 'universe' with the
+#  asterisk/asterisk-modules/asterisk-config packages (incl. res_fax_spandsp).
+#  NOTE: Debian 12 (bookworm) dropped Asterisk from main, so debian-slim has no
+#  install candidate — that caused "Package 'asterisk' has no installation
+#  candidate". Ubuntu keeps the same package names + ODBC driver path.
 # ============================================================================
-FROM debian:bookworm-slim
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Asterisk lives in 'universe'; ensure it's enabled before installing.
+RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common \
+    && add-apt-repository -y universe \
+    && apt-get update && apt-get install -y --no-install-recommends \
         asterisk \
         asterisk-modules \
         asterisk-config \
