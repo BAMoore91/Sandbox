@@ -17,15 +17,78 @@ needs a shell on the droplet over SSH.
 ssh root@178.128.155.236
 ```
 
-## 2. Get the code
+## 2. Get the code (private repo)
+
+The repo is **private**, so the droplet needs credentials to clone it. Pick
+**one** of the options below. Replace `OWNER/REPO` with your GitHub repo
+(here: `bamoore91/sandbox`). The deployment branch is
+`claude/linux-pbx-twilio-sip-8Keo7`.
 
 ```bash
 apt-get update -y && apt-get install -y git
-git clone <YOUR_REPO_URL> openpbx
-cd openpbx
-# use the deployment branch:
-git checkout claude/linux-pbx-twilio-sip-8Keo7
 ```
+
+### Option A — HTTPS + a fine-grained Personal Access Token (simplest)
+
+1. GitHub → **Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token**.
+   - **Repository access:** only your repo.
+   - **Permissions:** *Contents → Read-only* (that's all a clone needs).
+   - Set a short expiry; copy the token (starts with `github_pat_…`).
+2. On the droplet, clone with the token (it is **not** saved to disk this way):
+
+```bash
+read -rsp "Paste GitHub token: " GH_TOKEN; echo
+git clone --branch claude/linux-pbx-twilio-sip-8Keo7 \
+  "https://x-access-token:${GH_TOKEN}@github.com/OWNER/REPO.git" openpbx
+unset GH_TOKEN
+cd openpbx
+```
+
+> Using the token inline in the URL avoids caching it. If you instead want
+> future `git pull`s to work without re-entering it, run
+> `git config --global credential.helper store` and clone without the token in
+> the URL — but that writes the token to `~/.git-credentials`, so prefer a
+> deploy key (Option B) for anything long-lived.
+
+### Option B — SSH deploy key (best for a long-lived server)
+
+A deploy key is an SSH key tied to this one repo — no account-wide access.
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/openpbx_deploy -N "" -C "openpbx-droplet"
+cat ~/.ssh/openpbx_deploy.pub
+```
+
+Add that public key in GitHub → your repo → **Settings → Deploy keys → Add
+deploy key** (read-only; do **not** check "Allow write access"). Then:
+
+```bash
+cat >> ~/.ssh/config <<'EOF'
+Host github-openpbx
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/openpbx_deploy
+  IdentitiesOnly yes
+EOF
+git clone --branch claude/linux-pbx-twilio-sip-8Keo7 \
+  git@github-openpbx:OWNER/REPO.git openpbx
+cd openpbx
+```
+
+### Option C — no git on the droplet (upload a tarball)
+
+From your **local** machine, where the repo is already checked out:
+
+```bash
+git archive --format=tar.gz --prefix=openpbx/ \
+  claude/linux-pbx-twilio-sip-8Keo7 | \
+  ssh root@178.128.155.236 'mkdir -p /root && tar xzf - -C /root'
+ssh root@178.128.155.236 'cd /root/openpbx && ls pbx/deploy'
+```
+
+This copies the exact branch contents with no credentials on the droplet at all.
+
 
 ## 3. One-shot bootstrap
 
@@ -116,7 +179,7 @@ internal Docker network — never exposed publicly.
 cd ~/openpbx/pbx
 docker compose ps                     # status
 docker compose logs -f api            # logs
-docker compose pull && docker compose up -d --build   # update after git pull
+git pull && docker compose up -d --build   # update (re-auths per Option A/B)
 docker compose exec db pg_dump -U openpbx openpbx > backup-$(date +%F).sql
 docker compose down                   # stop (data persists in volumes)
 ```
