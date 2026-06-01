@@ -186,6 +186,11 @@ docker compose down                   # stop (data persists in volumes)
 
 ## Troubleshooting
 
+- **`failed to start userland proxy for port mapping …10180…/udp: timed out`**
+  → Docker's default userland-proxy can't handle the ~200-port RTP range. Fix:
+  `printf '{ "userland-proxy": false }\n' > /etc/docker/daemon.json && systemctl
+  restart docker`, then `docker compose up -d`. (The bootstrap script now sets
+  this automatically; this is the manual fix if you hit it.)
 - **Browser cert warning** → expected on the self-signed cert; install a real
   one (step 5).
 - **No audio / one-way audio** → confirm `PUBLIC_IP=178.128.155.236` in

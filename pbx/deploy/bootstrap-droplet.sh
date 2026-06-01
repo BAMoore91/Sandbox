@@ -45,6 +45,33 @@ if ! docker compose version >/dev/null 2>&1; then
   apt-get update -y && apt-get install -y docker-compose-plugin
 fi
 
+# ---- 1b. Docker daemon: disable the userland proxy ------------------------
+# The RTP range publishes ~200 UDP ports (10000-10200). Docker's default
+# userland-proxy spawns one proxy process per port and times out
+# ("failed to start userland proxy ... timed out"). iptables-only forwarding
+# handles large ranges with no per-port processes.
+DOCKER_JSON=/etc/docker/daemon.json
+if ! grep -q '"userland-proxy"' "$DOCKER_JSON" 2>/dev/null; then
+  log "Disabling Docker userland-proxy (needed for the RTP port range)…"
+  mkdir -p /etc/docker
+  if [[ -f "$DOCKER_JSON" ]] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$DOCKER_JSON" <<'PY'
+import json, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except Exception:
+    d = {}
+d["userland-proxy"] = False
+json.dump(d, open(p, "w"), indent=2)
+PY
+  else
+    echo '{ "userland-proxy": false }' > "$DOCKER_JSON"
+  fi
+  systemctl restart docker || service docker restart || true
+  sleep 3
+fi
+
 # ---- 2. .env with generated secrets ---------------------------------------
 rand() { openssl rand -hex "${1:-24}"; }
 
